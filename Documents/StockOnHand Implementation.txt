@@ -1,0 +1,67 @@
+﻿// Stock On Hand Tab Implementation for Manny Tools
+// -----------------------------------------------------------
+
+// 1. New Components Added:
+//
+// - StockOnHandForm.cs:
+//   * User control that displays stock information for products
+//   * Allows searching by PLU code
+//   * Displays various stock metrics (Purchases, Claims, Sold, etc.)
+//   * Customizable columns based on user preferences
+//   * Built on the functionality from the original SuperUserSOHForm
+//
+// - ColumnSelectForm.cs:
+//   * Dialog for selecting which columns to display in the stock grid
+//   * Saves column preferences to an external file
+//   * Accessible only to super users
+//   * Based on the original ColumnSelectForm but integrated with our permissions system
+//
+// - UserPermissions.cs (Updated):
+//   * Added STOCK_ON_HAND_TAB permission constant
+//   * Updated default permissions to include Stock On Hand tab for standard users
+//   * Maintains backward compatibility with existing permissions
+//
+// - MainForm.cs (Updated):
+//   * Added Stock On Hand tab to the tab control
+//   * Integrated permission checking for the new tab
+//   * Updates connection string when changed in settings
+//
+// 2. Key Features:
+//
+// - Product Code Lookup:
+//   * Search for products by their PLU code
+//   * Validates product existence in the database
+//   * Shows all relevant stock information
+//
+// - Stock Calculations:
+//   * Purchases, Claims, Sales tracking
+//   * Current Stock on Hand calculation
+//   * LayBuy/Layaway status tracking
+//
+// - Data Grid:
+//   * Customizable columns through column selection
+//   * Properly formatted monetary values
+//   * Clear button to reset the grid
+//
+// - Permission Control:
+//   * Admin can control who has access to this feature
+//   * Default permission grants standard users access
+//
+// 3. Technical Details:
+//
+// - Database Interaction:
+//   * Uses the same connection string as other components
+//   * Uses Dapper for data access
+//   * Runs multiple complex SQL queries to gather stock data
+//
+// - User Preferences:
+//   * Column visibility preferences saved to a user-specific file
+//   * Persists between sessions
+//
+// 4. Usage:
+//
+// - Enter a valid PLU/product code in the input field
+// - Click "Get SOH" to retrieve stock information
+// - View detailed stock data in the grid
+// - Super users can customize which columns are visible
+// - Clear the grid using the Clear button when needed

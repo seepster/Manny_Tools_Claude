@@ -260,7 +260,8 @@ namespace Manny_Tools_Claude
             {
                 DataSource = txtServer.Text,
                 InitialCatalog = txtDatabase.Text,
-                TrustServerCertificate = true
+                TrustServerCertificate = true,
+                ConnectTimeout = 3 // Set 3-second timeout
             };
 
             if (chkIntegratedSecurity.Checked)

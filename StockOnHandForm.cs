@@ -25,6 +25,7 @@ namespace Manny_Tools_Claude
         private Button btnClearGrid;
         private DataGridView dgvStockInfo;
         private Panel panelControls;
+        private Label lblConnectionStatus;
 
         // Column definitions
         private Dictionary<int, string> _columnMap = new Dictionary<int, string>
@@ -51,11 +52,93 @@ namespace Manny_Tools_Claude
             InitializeComponent();
             LoadVisibleColumns();
             ConfigureDataGridColumns();
+
+            // If connection string is null or empty, try to load it
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                TryLoadConnectionString();
+            }
+
+            // Update connection status display
+            UpdateConnectionStatusDisplay();
+
+            // Subscribe to connection status changes
+            ConnectionStatusManager.Instance.ConnectionStatusChanged += Instance_ConnectionStatusChanged;
+        }
+
+        private void Instance_ConnectionStatusChanged(object sender, ConnectionStatusEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => UpdateConnectionStatusDisplay()));
+            }
+            else
+            {
+                UpdateConnectionStatusDisplay();
+            }
+        }
+
+        private void UpdateConnectionStatusDisplay()
+        {
+            if (lblConnectionStatus != null)
+            {
+                lblConnectionStatus.Text = ConnectionStatusManager.Instance.IsConnected ?
+                    "Connection: Connected" : "Connection: Not Connected";
+                lblConnectionStatus.ForeColor = ConnectionStatusManager.Instance.IsConnected ?
+                    Color.Green : Color.Red;
+            }
+        }
+
+        private bool TryLoadConnectionString()
+        {
+            try
+            {
+                string appDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MannyTools");
+
+                string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+
+                if (File.Exists(configPath))
+                {
+                    // Read and decrypt connection string
+                    _connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+
+                    // Test the connection
+                    if (!string.IsNullOrEmpty(_connectionString))
+                    {
+                        // Check connection synchronously here
+                        try
+                        {
+                            using (var connection = new SqlConnection(_connectionString))
+                            {
+                                connection.Open();
+                                // Connection successful
+                                return true;
+                            }
+                        }
+                        catch
+                        {
+                            // Connection failed
+                            _connectionString = null;
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Error reading file
+                _connectionString = null;
+            }
+
+            return false;
         }
 
         public void UpdateConnectionString(string connectionString)
         {
             _connectionString = connectionString;
+            UpdateConnectionStatusDisplay();
         }
 
         // Method to refresh columns after permissions change
@@ -63,6 +146,16 @@ namespace Manny_Tools_Claude
         {
             LoadVisibleColumns();
             ConfigureDataGridColumns();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Unsubscribe from events
+                ConnectionStatusManager.Instance.ConnectionStatusChanged -= Instance_ConnectionStatusChanged;
+            }
+            base.Dispose(disposing);
         }
 
         private void InitializeComponent()
@@ -88,6 +181,17 @@ namespace Manny_Tools_Claude
             };
             panelControls.Controls.Add(lblTitle);
 
+            // Add connection status label
+            lblConnectionStatus = new Label
+            {
+                Text = "Connection: Unknown",
+                Location = new Point(300, 15),
+                Size = new Size(200, 20),
+                TextAlign = ContentAlignment.MiddleRight,
+                Font = new Font("Segoe UI", 9, FontStyle.Regular)
+            };
+            panelControls.Controls.Add(lblConnectionStatus);
+
             // PLU Input section
             lblEnterPLU = new Label
             {
@@ -102,6 +206,8 @@ namespace Manny_Tools_Claude
                 Location = new Point(15, 75),
                 Size = new Size(150, 23)
             };
+            // Add KeyDown event handler for Enter key
+            txtPLU.KeyDown += TxtPLU_KeyDown;
             panelControls.Controls.Add(txtPLU);
 
             btnGetSOH = new Button
@@ -161,13 +267,38 @@ namespace Manny_Tools_Claude
 
         #region Event Handlers
 
+        // Handle Enter key in PLU textbox
+        private void TxtPLU_KeyDown(object sender, KeyEventArgs e)
+        {
+            // If Enter key was pressed
+            if (e.KeyCode == Keys.Enter)
+            {
+                // Prevent the ding sound
+                e.SuppressKeyPress = true;
+
+                // Trigger the Get SOH button
+                PerformSearch();
+            }
+        }
+
         private void BtnGetSOH_Click(object sender, EventArgs e)
         {
+            PerformSearch();
+        }
+
+        // Extract search logic to a separate method so it can be called
+        // from both button click and Enter key press
+        private void PerformSearch()
+        {
+            // If connection string is empty, try loading it again
             if (string.IsNullOrWhiteSpace(_connectionString))
             {
-                MessageBox.Show("Database connection not configured. Please set up the connection in Settings.",
-                    "Connection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                if (!TryLoadConnectionString())
+                {
+                    MessageBox.Show("Database connection not configured. Please set up the connection in Settings.",
+                        "Connection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
             }
 
             string productCode = txtPLU.Text.Trim();
@@ -180,6 +311,21 @@ namespace Manny_Tools_Claude
 
             try
             {
+                // Test connection before proceeding
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    try
+                    {
+                        connection.Open();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Failed to connect to database: {ex.Message}",
+                            "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+
                 if (ValidateProductCode(productCode))
                 {
                     string productDescription = GetDescription(productCode);
@@ -401,7 +547,15 @@ namespace Manny_Tools_Claude
                 string filePath = GetColumnSettingsFilePath();
                 if (File.Exists(filePath))
                 {
-                    string[] lines = File.ReadAllLines(filePath);
+                    // Read and decrypt the columns configuration
+                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                    if (lines == null)
+                    {
+                        // Default to all columns visible if decryption fails
+                        _visibleColumns = new List<int>(_columnMap.Keys);
+                        return;
+                    }
+
                     _visibleColumns.Clear();
 
                     foreach (string line in lines)
@@ -503,7 +657,7 @@ namespace Manny_Tools_Claude
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "MannyTools");
 
-            return Path.Combine(appDataPath, "stockonhand_columns.dat");
+            return Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ColumnsFile);
         }
 
         #endregion

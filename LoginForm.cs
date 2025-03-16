@@ -201,7 +201,11 @@ namespace Manny_Tools_Claude
                     return false;
                 }
 
-                string[] lines = File.ReadAllLines(usersFile);
+                // Read and decrypt the users file
+                string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                if (lines == null)
+                    return false;
+
                 foreach (string line in lines)
                 {
                     string[] parts = line.Split('|');
@@ -249,7 +253,8 @@ namespace Manny_Tools_Claude
                     string superUserLine = $"admin|{HashPassword("admin")}|{UserType.SuperUser}|1";
                     string standardUserLine = $"user|{HashPassword("user")}|{UserType.StandardUser}|1";
 
-                    File.WriteAllLines(usersFile, new[] { superUserLine, standardUserLine });
+                    // Write encrypted data to file
+                    DataEncryptionHelper.WriteEncryptedLines(usersFile, new[] { superUserLine, standardUserLine });
                 }
             }
             catch (Exception ex)
@@ -278,7 +283,7 @@ namespace Manny_Tools_Claude
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "MannyTools");
 
-            return Path.Combine(appDataPath, "users.dat");
+            return Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.UsersFile);
         }
     }
 

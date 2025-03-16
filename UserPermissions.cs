@@ -37,12 +37,24 @@ namespace Manny_Tools_Claude
         /// </summary>
         public bool HasPermission(string username, string permission)
         {
-            // Super user always has all permissions
-            if (username.ToLower() == "admin")
-                return true;
+            string lowercaseUsername = username.ToLower();
 
-            if (_userPermissions.ContainsKey(username.ToLower()))
-                return _userPermissions[username.ToLower()].Contains(permission);
+            // Super user always has all permissions by default
+            if (lowercaseUsername == "admin")
+            {
+                // But check if there are explicitly saved permissions for admin
+                if (_userPermissions.ContainsKey(lowercaseUsername))
+                {
+                    return _userPermissions[lowercaseUsername].Contains(permission);
+                }
+
+                // Default admin behavior - has all permissions
+                return true;
+            }
+
+            // For regular users, check if they have the specific permission
+            if (_userPermissions.ContainsKey(lowercaseUsername))
+                return _userPermissions[lowercaseUsername].Contains(permission);
 
             return false;
         }
@@ -52,23 +64,21 @@ namespace Manny_Tools_Claude
         /// </summary>
         public void SetPermission(string username, string permission, bool hasPermission)
         {
-            // Don't allow modifying super user permissions
-            if (username.ToLower() == "admin")
-                return;
+            string lowercaseUsername = username.ToLower();
 
             // Ensure username exists in dictionary
-            if (!_userPermissions.ContainsKey(username.ToLower()))
-                _userPermissions[username.ToLower()] = new List<string>();
+            if (!_userPermissions.ContainsKey(lowercaseUsername))
+                _userPermissions[lowercaseUsername] = new List<string>();
 
             // Add or remove permission
             if (hasPermission)
             {
-                if (!_userPermissions[username.ToLower()].Contains(permission))
-                    _userPermissions[username.ToLower()].Add(permission);
+                if (!_userPermissions[lowercaseUsername].Contains(permission))
+                    _userPermissions[lowercaseUsername].Add(permission);
             }
             else
             {
-                _userPermissions[username.ToLower()].Remove(permission);
+                _userPermissions[lowercaseUsername].Remove(permission);
             }
 
             // Save changes
@@ -80,12 +90,21 @@ namespace Manny_Tools_Claude
         /// </summary>
         public List<string> GetUserPermissions(string username)
         {
-            // Admin has all permissions
-            if (username.ToLower() == "admin")
-                return new List<string>(AvailablePermissions.Keys);
+            string lowercaseUsername = username.ToLower();
 
-            if (_userPermissions.ContainsKey(username.ToLower()))
-                return new List<string>(_userPermissions[username.ToLower()]);
+            // Admin - return either explicit permissions or all permissions by default
+            if (lowercaseUsername == "admin")
+            {
+                if (_userPermissions.ContainsKey(lowercaseUsername))
+                    return new List<string>(_userPermissions[lowercaseUsername]);
+
+                // If admin has no explicit permissions, return all permissions
+                return new List<string>(AvailablePermissions.Keys);
+            }
+
+            // For other users, return their saved permissions or empty list
+            if (_userPermissions.ContainsKey(lowercaseUsername))
+                return new List<string>(_userPermissions[lowercaseUsername]);
 
             return new List<string>();
         }
@@ -95,9 +114,11 @@ namespace Manny_Tools_Claude
         /// </summary>
         public void DeleteUserPermissions(string username)
         {
-            if (_userPermissions.ContainsKey(username.ToLower()))
+            string lowercaseUsername = username.ToLower();
+
+            if (_userPermissions.ContainsKey(lowercaseUsername))
             {
-                _userPermissions.Remove(username.ToLower());
+                _userPermissions.Remove(lowercaseUsername);
                 SavePermissions();
             }
         }
@@ -151,7 +172,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Set default permissions for standard user
+        /// Set default permissions for users
         /// </summary>
         private void SetDefaultPermissions()
         {
@@ -163,6 +184,9 @@ namespace Manny_Tools_Claude
                 STOCK_ON_HAND_TAB,
                 ORBIT_SIZING_METHOD_TAB
             };
+
+            // By default, admin user has access to all tabs
+            _userPermissions["admin"] = new List<string>(AvailablePermissions.Keys);
 
             // Save the default permissions
             SavePermissions();

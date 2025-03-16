@@ -48,6 +48,64 @@ namespace Manny_Tools_Claude
             {
                 InitializeSchemaMapper();
             }
+
+            // Subscribe to connection changes
+            DatabaseConnectionManager.Instance.ConnectionChanged += DatabaseConnection_Changed;
+            ConnectionStatusManager.Instance.ConnectionStatusChanged += ConnectionStatus_Changed;
+        }
+
+        private void ConnectionStatus_Changed(object sender, ConnectionStatusEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => CheckAndLoadTables()));
+            }
+            else
+            {
+                CheckAndLoadTables();
+            }
+        }
+
+        private void DatabaseConnection_Changed(object sender, ConnectionChangedEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => {
+                    _connectionString = e.ConnectionString;
+                    InitializeSchemaMapper();
+                }));
+            }
+            else
+            {
+                _connectionString = e.ConnectionString;
+                InitializeSchemaMapper();
+            }
+        }
+
+        private void CheckAndLoadTables()
+        {
+            if (ConnectionStatusManager.Instance.IsConnected &&
+                string.IsNullOrEmpty(_connectionString))
+            {
+                // Try to get the connection string from the manager
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                if (!string.IsNullOrEmpty(_connectionString))
+                {
+                    InitializeSchemaMapper();
+                }
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Unsubscribe from events
+                DatabaseConnectionManager.Instance.ConnectionChanged -= DatabaseConnection_Changed;
+                ConnectionStatusManager.Instance.ConnectionStatusChanged -= ConnectionStatus_Changed;
+            }
+
+            base.Dispose(disposing);
         }
 
         public void UpdateConnectionString(string connectionString)
@@ -140,8 +198,8 @@ namespace Manny_Tools_Claude
                 BorderStyle = BorderStyle.FixedSingle
             };
 
-            panelLeft.Controls.Add(lblTableList);
             panelLeft.Controls.Add(lstTables);
+            panelLeft.Controls.Add(lblTableList);
 
             // Create right panel for table details
             panelRight = new Panel
@@ -225,6 +283,24 @@ namespace Manny_Tools_Claude
             // Wire up events
             lstTables.SelectedIndexChanged += LstTables_SelectedIndexChanged;
             btnRefresh.Click += BtnRefresh_Click;
+
+            // Load tables on control shown
+            this.HandleCreated += SQL_Viewer_Schema_HandleCreated;
+        }
+
+        private void SQL_Viewer_Schema_HandleCreated(object sender, EventArgs e)
+        {
+            // Try to load tables if we have a connection
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                // Try to get connection string from the manager
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+            }
+
+            if (!string.IsNullOrEmpty(_connectionString))
+            {
+                InitializeSchemaMapper();
+            }
         }
 
         private void ConfigureTableDataGrid()
@@ -270,6 +346,11 @@ namespace Manny_Tools_Claude
         {
             try
             {
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    return;
+                }
+
                 _schemaMapper = new SQL_Mapper_Schema(_connectionString);
                 LoadTableList();
             }
@@ -284,6 +365,17 @@ namespace Manny_Tools_Claude
             try
             {
                 Cursor.Current = Cursors.WaitCursor;
+
+                // Check if connection is active
+                if (!ConnectionStatusManager.Instance.IsConnected)
+                {
+                    ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+                    if (!ConnectionStatusManager.Instance.IsConnected)
+                    {
+                        Cursor.Current = Cursors.Default;
+                        return;
+                    }
+                }
 
                 // Get table names
                 var tables = SQL_Get_Generic_List.ExecuteQuery<SQL_Mapper_Schema.TableInfo>(
@@ -303,6 +395,12 @@ namespace Manny_Tools_Claude
 
                 lblTableFields.Text = "Table Fields";
                 lblTableData.Text = "Table Data (Latest 10 Records)";
+
+                // Auto select the first table if available
+                if (lstTables.Items.Count > 0)
+                {
+                    lstTables.SelectedIndex = 0;
+                }
             }
             catch (Exception ex)
             {

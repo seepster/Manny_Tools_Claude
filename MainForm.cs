@@ -17,6 +17,7 @@ namespace Manny_Tools_Claude
         private string _currentUsername;
         private bool _isDefaultPassword;
         private UserPermissions _permissionManager;
+        private Button btnLogout; // Added logout button
 
         //Timer to check connection status
         private System.Windows.Forms.Timer _connectionCheckTimer;
@@ -172,6 +173,17 @@ namespace Manny_Tools_Claude
             btnUserManagement.Click += BtnUserManagement_Click;
             headerPanel.Controls.Add(btnUserManagement);
 
+            // Add logout button
+            btnLogout = new Button
+            {
+                Text = "Logout",
+                Size = new Size(100, 30),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                // Location will be set in PositionHeaderButtons
+            };
+            btnLogout.Click += BtnLogout_Click;
+            headerPanel.Controls.Add(btnLogout);
+
             // Create tab control
             tabControl = new TabControl
             {
@@ -261,7 +273,8 @@ namespace Manny_Tools_Claude
 
         private void InitializeStockOnHand()
         {
-            stockOnHandForm = new StockOnHandForm(_connectionString)
+            // Pass both connection string and current username to StockOnHandForm
+            stockOnHandForm = new StockOnHandForm(_connectionString, _currentUsername)
             {
                 Dock = DockStyle.Fill,
                 Visible = true
@@ -292,6 +305,7 @@ namespace Manny_Tools_Claude
             // Position from right to left
             btnSettings.Location = new Point(availableWidth - btnSettings.Width - rightMargin, 15);
             btnUserManagement.Location = new Point(btnSettings.Left - btnUserManagement.Width - buttonSpacing, 15);
+            btnLogout.Location = new Point(btnUserManagement.Left - btnLogout.Width - buttonSpacing, 15);
         }
 
         private void MainForm_Resize(object sender, EventArgs e)
@@ -309,32 +323,51 @@ namespace Manny_Tools_Claude
             // Hide user management button for standard users
             btnUserManagement.Visible = _currentUserType == UserType.SuperUser;
 
-            // For standard user, apply permission-based access
+            // For all users, including superusers, apply permission-based access
+            // This allows for customizing which tabs superusers see
+
+            // Remove tabs based on permissions
+            if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.VIEW_SQL_TAB))
+            {
+                tabControl.TabPages.Remove(tabViewSQL);
+            }
+
+            if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.CREATE_SIZES_TAB))
+            {
+                tabControl.TabPages.Remove(tabCreateSizes);
+            }
+
+            if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.STOCK_ON_HAND_TAB))
+            {
+                tabControl.TabPages.Remove(tabStockOnHand);
+            }
+
+            if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.ORBIT_SIZING_METHOD_TAB))
+            {
+                tabControl.TabPages.Remove(tabOrbitSizing);
+            }
+
+            // For standard users, hide settings button
             if (_currentUserType == UserType.StandardUser)
             {
-                // Remove tabs based on permissions
-                if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.VIEW_SQL_TAB))
-                {
-                    tabControl.TabPages.Remove(tabViewSQL);
-                }
-
-                if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.CREATE_SIZES_TAB))
-                {
-                    tabControl.TabPages.Remove(tabCreateSizes);
-                }
-
-                if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.STOCK_ON_HAND_TAB))
-                {
-                    tabControl.TabPages.Remove(tabStockOnHand);
-                }
-
-                if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.ORBIT_SIZING_METHOD_TAB))
-                {
-                    tabControl.TabPages.Remove(tabOrbitSizing);
-                }
-
-                // Hide settings button for standard user
                 btnSettings.Visible = false;
+            }
+        }
+
+        #endregion
+
+        #region Logout Functionality
+
+        // Event handler for logout button
+        private void BtnLogout_Click(object sender, EventArgs e)
+        {
+            // Confirm logout
+            if (MessageBox.Show("Are you sure you want to logout?",
+                "Confirm Logout", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                // Close the main form with a special result to indicate logout
+                this.DialogResult = DialogResult.Retry; // Using Retry to indicate logout operation
+                this.Close();
             }
         }
 

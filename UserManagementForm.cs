@@ -275,9 +275,27 @@ namespace Manny_Tools_Claude
 
         private void BtnPermissions_Click(object sender, EventArgs e)
         {
-            using (PermissionManagerForm form = new PermissionManagerForm("user"))
+            if (_userType != UserType.SuperUser)
             {
-                form.ShowDialog();
+                MessageBox.Show("Only administrators can manage permissions.",
+                    "Permission Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Get the currently selected user, or default to the first user if none selected
+            string selectedUser = "user";
+            if (lstUsers.SelectedItems.Count > 0)
+            {
+                selectedUser = lstUsers.SelectedItems[0].Text;
+            }
+
+            using (PermissionManagerForm form = new PermissionManagerForm(_currentUsername))
+            {
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    // Refresh the current form to show the updated permissions
+                    LoadUsers();
+                }
             }
         }
     }

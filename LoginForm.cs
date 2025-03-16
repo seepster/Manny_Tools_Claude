@@ -30,12 +30,68 @@ namespace Manny_Tools_Claude
         public LoginForm()
         {
             InitializeComponent();
+
+            // Reset user authentication properties
             AuthenticatedUserType = UserType.None;
             AuthenticatedUsername = string.Empty;
             IsDefaultPassword = false;
 
+            // Reload all configuration data
+            ReloadConfigurationData();
+
             // Create default users if they don't exist
             CreateDefaultUsers();
+        }
+
+        /// <summary>
+        /// Reloads all configuration data when the login form is shown
+        /// </summary>
+        private void ReloadConfigurationData()
+        {
+            try
+            {
+                // Reset singletons to force reloading of configuration data
+                ResetSingletons();
+
+                // Re-initialize permissions
+                UserPermissions permissions = new UserPermissions();
+
+                // Check connection status to ensure it's refreshed
+                ConnectionStatusManager.Instance.CheckConnection(string.Empty);
+
+                // Clear database connection manager
+                DatabaseConnectionManager.Instance.LoadConnectionString();
+            }
+            catch (Exception ex)
+            {
+                // Log error but continue - not critical for login
+                Console.WriteLine($"Error reloading configuration: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Resets singleton instances to force configuration reload
+        /// </summary>
+        private void ResetSingletons()
+        {
+            // Use reflection to reset singleton instances
+            // This is a bit of a hack but necessary to force reloading of configuration
+            try
+            {
+                // Reset ConnectionStatusManager singleton
+                var fieldInfo = typeof(ConnectionStatusManager).GetField("_instance",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                fieldInfo?.SetValue(null, null);
+
+                // Reset DatabaseConnectionManager singleton
+                fieldInfo = typeof(DatabaseConnectionManager).GetField("_instance",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                fieldInfo?.SetValue(null, null);
+            }
+            catch
+            {
+                // Ignore errors - this is just an attempt to force refresh
+            }
         }
 
         private void InitializeComponent()

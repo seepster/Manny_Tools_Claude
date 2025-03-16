@@ -1,0 +1,44 @@
+﻿// Project Structure for "Manny Tools"
+
+// 1. Project Type: Windows Forms App (.NET Framework 4.8)
+// Project Name: MannyTools
+
+// 2. Required NuGet Packages:
+// - Microsoft.Data.SqlClient (version 5.1.1 or later)
+// - Dapper (version 2.0.151 or later)
+
+// 3. File Structure:
+// MannyTools/
+// ├── LoginForm.cs                 - User login and authentication
+// ├── MainForm.cs                  - Main application with tabbed interface
+// ├── SQL_Connection_Settings.cs   - SQL Connection configuration form
+// ├── SQL_Viewer_Schema.cs         - SQL Schema viewer control
+// ├── SQL_Mapper_Schema.cs         - Schema mapper utility class
+// ├── SQL_Get_Generic_List.cs      - SQL data access helper class
+// ├── CreateSizesForm.cs           - Size generation tool
+// └── App.config                   - Application configuration
+
+// 4. Project References:
+// - System
+// - System.Core
+// - System.Data
+// - System.Data.DataSetExtensions
+// - System.Drawing
+// - System.Windows.Forms
+// - System.Xml
+// - System.Xml.Linq
+
+// 5. Build Steps:
+// - Create a new Windows Forms App project
+// - Add the required NuGet packages
+// - Add all the provided C# files to the project
+// - Build and run the application
+
+// 6. Default User Credentials:
+// Super User:
+// - Username: admin
+// - Password: admin
+//
+// Standard User:
+// - Username: user
+// - Password: user

@@ -272,7 +272,7 @@ namespace Manny_Tools_Claude
 
         private void InitializeOrbitSizing()
         {
-            orbitSizingForm = new OrbitSizingMethodForm(_connectionString)
+            orbitSizingForm = new OrbitSizingMethodForm()
             {
                 Dock = DockStyle.Fill,
                 Visible = true
@@ -350,20 +350,30 @@ namespace Manny_Tools_Claude
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "MannyTools");
 
-                string configPath = Path.Combine(appDataPath, "connection.config");
+                string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
 
                 if (File.Exists(configPath))
                 {
-                    _connectionString = File.ReadAllText(configPath);
+                    // Read and decrypt connection string
+                    _connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+
+                    if (string.IsNullOrEmpty(_connectionString))
+                    {
+                        ConnectionStatusManager.Instance.CheckConnection(string.Empty);
+                        ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
+                        return false;
+                    }
+
                     ConnectionStatusManager.Instance.CheckConnection(_connectionString);
                     ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
-                    return !string.IsNullOrEmpty(_connectionString);
+                    return true;
                 }
             }
             catch
             {
                 // Ignore errors - connection settings will be requested if needed
             }
+
             ConnectionStatusManager.Instance.CheckConnection(string.Empty);
             ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
 
@@ -398,11 +408,6 @@ namespace Manny_Tools_Claude
                 stockOnHandForm.UpdateConnectionString(_connectionString);
             }
 
-            // Update Orbit Sizing form with new connection string
-            if (orbitSizingForm != null)
-            {
-                orbitSizingForm.UpdateConnectionString(_connectionString);
-            }
         }
 
         private void BtnSettings_Click(object sender, EventArgs e)

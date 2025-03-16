@@ -17,8 +17,7 @@ namespace Manny_Tools_Claude
         private TextBox txtPassword;
         private Button btnLogin;
         private Button btnCancel;
-        private Button btnChangeAdminPassword;
-        private Button btnChangeUserPassword;
+        private Button btnUserManagement;
 
         // User authentication result
         public UserType AuthenticatedUserType { get; private set; }
@@ -91,7 +90,7 @@ namespace Manny_Tools_Claude
             btnLogin = new Button
             {
                 Text = "Login",
-                Location = new Point(160, 180),
+                Location = new Point(160, 170),
                 Size = new Size(100, 30)
             };
             btnLogin.Click += BtnLogin_Click;
@@ -99,28 +98,19 @@ namespace Manny_Tools_Claude
             btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(270, 180),
+                Location = new Point(270, 170),
                 Size = new Size(80, 30)
             };
             btnCancel.Click += BtnCancel_Click;
 
-            // Change Admin Password button
-            btnChangeAdminPassword = new Button
+            // User Management button (Replace the old separate buttons)
+            btnUserManagement = new Button
             {
-                Text = "Change Admin Password",
+                Text = "User Management",
                 Location = new Point(50, 240),
                 Size = new Size(300, 30)
             };
-            btnChangeAdminPassword.Click += BtnChangeAdminPassword_Click;
-
-            // Change User Password button
-            btnChangeUserPassword = new Button
-            {
-                Text = "Change Standard User Password",
-                Location = new Point(50, 280),
-                Size = new Size(300, 30)
-            };
-            btnChangeUserPassword.Click += BtnChangeUserPassword_Click;
+            btnUserManagement.Click += BtnUserManagement_Click;
 
             // Add controls to the form
             this.Controls.Add(lblTitle);
@@ -130,8 +120,7 @@ namespace Manny_Tools_Claude
             this.Controls.Add(txtPassword);
             this.Controls.Add(btnLogin);
             this.Controls.Add(btnCancel);
-            this.Controls.Add(btnChangeAdminPassword);
-            this.Controls.Add(btnChangeUserPassword);
+            this.Controls.Add(btnUserManagement);
 
             // Set the accept and cancel buttons
             this.AcceptButton = btnLogin;
@@ -151,7 +140,12 @@ namespace Manny_Tools_Claude
                 {
                     MessageBox.Show("You are using the default password. You must change it before proceeding.",
                         "Security Notice", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    ChangePassword("admin", "Admin", true);
+
+                    // Use the user management form to change password
+                    using (var userManagementForm = new UserManagementForm(txtUsername.Text, userType))
+                    {
+                        userManagementForm.ShowDialog();
+                    }
                 }
 
                 UserAuthenticated?.Invoke(this, new UserAuthenticatedEventArgs(txtUsername.Text, userType, isDefault));
@@ -172,35 +166,21 @@ namespace Manny_Tools_Claude
             this.Close();
         }
 
-        private void BtnChangeAdminPassword_Click(object sender, EventArgs e)
+        private void BtnUserManagement_Click(object sender, EventArgs e)
         {
-            // Verify admin credentials first
+            // Verify superuser credentials first
             if (ValidateCredentials(txtUsername.Text, txtPassword.Text, out UserType userType, out _) &&
                 userType == UserType.SuperUser)
             {
-                ChangePassword("admin", "Admin", false);
+                // Authenticated as superuser, show the user management form
+                using (var userManagementForm = new UserManagementForm(txtUsername.Text, userType))
+                {
+                    userManagementForm.ShowDialog();
+                }
             }
             else
             {
                 MessageBox.Show("Please enter valid admin credentials first.",
-                    "Authentication Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                txtUsername.Text = "admin";
-                txtPassword.Text = string.Empty;
-                txtPassword.Focus();
-            }
-        }
-
-        private void BtnChangeUserPassword_Click(object sender, EventArgs e)
-        {
-            // Verify admin credentials first
-            if (ValidateCredentials(txtUsername.Text, txtPassword.Text, out UserType userType, out _) &&
-                userType == UserType.SuperUser)
-            {
-                ChangePassword("user", "Standard User", false);
-            }
-            else
-            {
-                MessageBox.Show("Please enter valid admin credentials first to change user password.",
                     "Authentication Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 txtUsername.Text = "admin";
                 txtPassword.Text = string.Empty;
@@ -250,26 +230,6 @@ namespace Manny_Tools_Claude
             {
                 // If any error occurs during validation, authentication fails
                 return false;
-            }
-
-            return false;
-        }
-
-        private bool ChangePassword(string username, string userDisplayName, bool requiredChange)
-        {
-            using (var changeForm = new ChangePasswordForm(username, userDisplayName, requiredChange))
-            {
-                if (changeForm.ShowDialog() == DialogResult.OK)
-                {
-                    MessageBox.Show($"{userDisplayName} password has been changed successfully.",
-                        "Password Changed", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return true;
-                }
-                else if (requiredChange)
-                {
-                    // If password change was required but canceled, exit application
-                    Application.Exit();
-                }
             }
 
             return false;

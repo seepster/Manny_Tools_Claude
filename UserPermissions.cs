@@ -91,6 +91,18 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
+        /// Delete all permissions for a specific user
+        /// </summary>
+        public void DeleteUserPermissions(string username)
+        {
+            if (_userPermissions.ContainsKey(username.ToLower()))
+            {
+                _userPermissions.Remove(username.ToLower());
+                SavePermissions();
+            }
+        }
+
+        /// <summary>
         /// Load permissions from file
         /// </summary>
         private void LoadPermissions()

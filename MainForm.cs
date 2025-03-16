@@ -68,8 +68,7 @@ namespace Manny_Tools_Claude
         private TabPage tabStockOnHand;
         private TabPage tabOrbitSizing;
         private Button btnSettings;
-        private Button btnUserInfo;
-        private Button btnManagePermissions;
+        private Button btnUserManagement;
         private ToolStripStatusLabel lblStatus;
         private SQL_Viewer_Schema sqlViewer;
         private CreateSizesForm sizesForm;
@@ -97,9 +96,9 @@ namespace Manny_Tools_Claude
                 if (MessageBox.Show("You are using the default standard user password. Would you like to change it now?",
                     "Security Recommendation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {
-                    using (var changeForm = new ChangePasswordForm("user", "Standard User", false))
+                    using (var userManagementForm = new UserManagementForm(_currentUsername, _currentUserType))
                     {
-                        changeForm.ShowDialog();
+                        userManagementForm.ShowDialog();
                     }
                 }
             }
@@ -162,30 +161,16 @@ namespace Manny_Tools_Claude
             btnSettings.Click += BtnSettings_Click;
             headerPanel.Controls.Add(btnSettings);
 
-            // Add user info button
-            btnUserInfo = new Button
+            // Add user management button
+            btnUserManagement = new Button
             {
-                Text = "User: " + _currentUsername,
+                Text = "User Management",
                 Size = new Size(150, 30),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
                 // Location will be set in PositionHeaderButtons
             };
-            btnUserInfo.Click += BtnUserInfo_Click;
-            headerPanel.Controls.Add(btnUserInfo);
-
-            // Add manage permissions button (only for super user)
-            if (_currentUserType == UserType.SuperUser)
-            {
-                btnManagePermissions = new Button
-                {
-                    Text = "Manage Permissions",
-                    Size = new Size(150, 30),
-                    Anchor = AnchorStyles.Top | AnchorStyles.Right
-                    // Location will be set in PositionHeaderButtons
-                };
-                btnManagePermissions.Click += BtnManagePermissions_Click;
-                headerPanel.Controls.Add(btnManagePermissions);
-            }
+            btnUserManagement.Click += BtnUserManagement_Click;
+            headerPanel.Controls.Add(btnUserManagement);
 
             // Create tab control
             tabControl = new TabControl
@@ -304,18 +289,9 @@ namespace Manny_Tools_Claude
             int buttonSpacing = 10;
             int availableWidth = this.ClientSize.Width;
 
-            if (_currentUserType == UserType.SuperUser && btnManagePermissions != null)
-            {
-                // Position from right to left
-                btnSettings.Location = new Point(availableWidth - btnSettings.Width - rightMargin, 15);
-                btnUserInfo.Location = new Point(btnSettings.Left - btnUserInfo.Width - buttonSpacing, 15);
-                btnManagePermissions.Location = new Point(btnUserInfo.Left - btnManagePermissions.Width - buttonSpacing, 15);
-            }
-            else
-            {
-                btnSettings.Location = new Point(availableWidth - btnSettings.Width - rightMargin, 15);
-                btnUserInfo.Location = new Point(btnSettings.Left - btnUserInfo.Width - buttonSpacing, 15);
-            }
+            // Position from right to left
+            btnSettings.Location = new Point(availableWidth - btnSettings.Width - rightMargin, 15);
+            btnUserManagement.Location = new Point(btnSettings.Left - btnUserManagement.Width - buttonSpacing, 15);
         }
 
         private void MainForm_Resize(object sender, EventArgs e)
@@ -330,6 +306,9 @@ namespace Manny_Tools_Claude
 
         private void ConfigureUIForUserRole()
         {
+            // Hide user management button for standard users
+            btnUserManagement.Visible = _currentUserType == UserType.SuperUser;
+
             // For standard user, apply permission-based access
             if (_currentUserType == UserType.StandardUser)
             {
@@ -431,84 +410,20 @@ namespace Manny_Tools_Claude
             ShowConnectionSettings();
         }
 
-        private void BtnManagePermissions_Click(object sender, EventArgs e)
+        private void BtnUserManagement_Click(object sender, EventArgs e)
         {
-            using (var permissionsForm = new PermissionManagerForm("user"))
-            {
-                if (permissionsForm.ShowDialog() == DialogResult.OK)
-                {
-                    MessageBox.Show("User permissions have been updated. Changes will take effect the next time the user logs in.",
-                        "Permissions Updated", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    // Refresh the Stock On Hand form to apply any column visibility changes
-                    if (stockOnHandForm != null)
-                    {
-                        stockOnHandForm.RefreshColumns();
-                    }
-                }
-            }
-        }
-
-        private void BtnUserInfo_Click(object sender, EventArgs e)
-        {
-            // For super users, show extended options
             if (_currentUserType == UserType.SuperUser)
             {
-                string[] options = new string[] {
-                    "View User Info",
-                    "Change My Password",
-                    "Change Standard User Password"
-                };
-
-                using (var optionForm = new OptionSelectForm("User Options", "Select an option:", options))
+                using (UserManagementForm userManagementForm = new UserManagementForm(_currentUsername, _currentUserType))
                 {
-                    int result = optionForm.ShowDialog() == DialogResult.OK ? optionForm.SelectedIndex : -1;
-
-                    switch (result)
+                    if (userManagementForm.ShowDialog() == DialogResult.OK)
                     {
-                        case 0: // View user info
-                            MessageBox.Show($"User: {_currentUsername}\nRole: {_currentUserType}",
-                                "User Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            break;
-
-                        case 1: // Change admin password
-                            using (var changeForm = new ChangePasswordForm("admin", "Admin", false))
-                            {
-                                changeForm.ShowDialog();
-                            }
-                            break;
-
-                        case 2: // Change user password
-                            using (var changeForm = new ChangePasswordForm("user", "Standard User", false))
-                            {
-                                changeForm.ShowDialog();
-                            }
-                            break;
-                    }
-                }
-            }
-            else
-            {
-                // Standard users only get options to view info or change their own password
-                string[] options = new string[] { "View User Info", "Change My Password" };
-
-                using (var optionForm = new OptionSelectForm("User Options", "Select an option:", options))
-                {
-                    int result = optionForm.ShowDialog() == DialogResult.OK ? optionForm.SelectedIndex : -1;
-
-                    switch (result)
-                    {
-                        case 0: // View user info
-                            MessageBox.Show($"User: {_currentUsername}\nRole: {_currentUserType}",
-                                "User Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            break;
-
-                        case 1: // Change own password
-                            using (var changeForm = new ChangePasswordForm("user", "Standard User", false))
-                            {
-                                changeForm.ShowDialog();
-                            }
-                            break;
+                        // Refresh any components that depend on user settings
+                        if (stockOnHandForm != null)
+                        {
+                            stockOnHandForm.RefreshColumns();
+                        }
                     }
                 }
             }

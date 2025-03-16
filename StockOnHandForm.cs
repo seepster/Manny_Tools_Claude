@@ -16,6 +16,7 @@ namespace Manny_Tools_Claude
 
         private string _connectionString;
         private List<int> _visibleColumns = new List<int>();
+        private string _currentUsername = "user";
 
         // Form controls
         private Label lblTitle;
@@ -46,9 +47,11 @@ namespace Manny_Tools_Claude
 
         #region Constructor & Initialization
 
-        public StockOnHandForm(string connectionString = null)
+        public StockOnHandForm(string connectionString = null, string username = "user")
         {
             _connectionString = connectionString;
+            _currentUsername = username;
+
             InitializeComponent();
             LoadVisibleColumns();
             ConfigureDataGridColumns();
@@ -64,6 +67,16 @@ namespace Manny_Tools_Claude
 
             // Subscribe to connection status changes
             ConnectionStatusManager.Instance.ConnectionStatusChanged += Instance_ConnectionStatusChanged;
+        }
+
+        public void SetCurrentUsername(string username)
+        {
+            if (_currentUsername != username)
+            {
+                _currentUsername = username;
+                LoadVisibleColumns();
+                ConfigureDataGridColumns();
+            }
         }
 
         private void Instance_ConnectionStatusChanged(object sender, ConnectionStatusEventArgs e)
@@ -544,32 +557,82 @@ namespace Manny_Tools_Claude
         {
             try
             {
-                string filePath = GetColumnSettingsFilePath();
+                string filePath = GetColumnSettingsFilePath(_currentUsername);
                 if (File.Exists(filePath))
                 {
-                    // Read and decrypt the columns configuration
                     string[] lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
-                    if (lines == null)
-                    {
-                        // Default to all columns visible if decryption fails
-                        _visibleColumns = new List<int>(_columnMap.Keys);
-                        return;
-                    }
-
                     _visibleColumns.Clear();
 
-                    foreach (string line in lines)
+                    if (lines != null)
                     {
-                        if (int.TryParse(line, out int columnId))
+                        foreach (string line in lines)
                         {
-                            _visibleColumns.Add(columnId);
+                            if (int.TryParse(line, out int columnId))
+                            {
+                                _visibleColumns.Add(columnId);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // If decryption fails, use default columns file
+                        filePath = GetColumnSettingsFilePath();
+                        if (File.Exists(filePath))
+                        {
+                            lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                            if (lines != null)
+                            {
+                                foreach (string line in lines)
+                                {
+                                    if (int.TryParse(line, out int columnId))
+                                    {
+                                        _visibleColumns.Add(columnId);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                // Default to all columns visible
+                                _visibleColumns = new List<int>(_columnMap.Keys);
+                            }
+                        }
+                        else
+                        {
+                            // Default to all columns visible
+                            _visibleColumns = new List<int>(_columnMap.Keys);
                         }
                     }
                 }
                 else
                 {
-                    // Default to all columns visible
-                    _visibleColumns = new List<int>(_columnMap.Keys);
+                    // Try to use the default columns file
+                    filePath = GetColumnSettingsFilePath();
+                    if (File.Exists(filePath))
+                    {
+                        string[] lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                        _visibleColumns.Clear();
+
+                        if (lines != null)
+                        {
+                            foreach (string line in lines)
+                            {
+                                if (int.TryParse(line, out int columnId))
+                                {
+                                    _visibleColumns.Add(columnId);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Default to all columns visible
+                            _visibleColumns = new List<int>(_columnMap.Keys);
+                        }
+                    }
+                    else
+                    {
+                        // Default to all columns visible
+                        _visibleColumns = new List<int>(_columnMap.Keys);
+                    }
                 }
             }
             catch
@@ -582,6 +645,21 @@ namespace Manny_Tools_Claude
             if (!_visibleColumns.Contains(1))
             {
                 _visibleColumns.Add(1);
+            }
+        }
+        private string GetColumnSettingsFilePath(string username = null)
+        {
+            string appDataPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "MannyTools");
+
+            if (!string.IsNullOrEmpty(username))
+            {
+                return Path.Combine(appDataPath, $"columns_{username.ToLower()}.dat");
+            }
+            else
+            {
+                return Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ColumnsFile);
             }
         }
 

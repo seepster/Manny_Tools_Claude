@@ -123,7 +123,7 @@ namespace Manny_Tools_Claude
                         // Check connection synchronously here
                         try
                         {
-                            using (var connection = new SqlConnection(_connectionString))
+                            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(_connectionString))
                             {
                                 connection.Open();
                                 // Connection successful
@@ -325,7 +325,7 @@ namespace Manny_Tools_Claude
             try
             {
                 // Test connection before proceeding
-                using (var connection = new SqlConnection(_connectionString))
+                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(_connectionString))
                 {
                     try
                     {

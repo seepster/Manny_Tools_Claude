@@ -53,7 +53,7 @@ namespace Manny_Tools_Claude
 
             try
             {
-                using (var connection = new SqlConnection(connectionString))
+                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
                 {
                     await connection.OpenAsync();
                     UpdateConnectionStatus(true, string.Empty);
@@ -79,7 +79,7 @@ namespace Manny_Tools_Claude
 
             try
             {
-                using (var connection = new SqlConnection(connectionString))
+                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
                 {
                     connection.Open();
                     UpdateConnectionStatus(true, string.Empty);

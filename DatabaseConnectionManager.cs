@@ -147,19 +147,62 @@ namespace Manny_Tools_Claude
                 return false;
             }
 
-            try
+            bool connectionSuccessful = false;
+            bool timeoutOccurred = false;
+            Exception connectionException = null;
+
+            // Create a timer to enforce the 3-second timeout
+            System.Threading.Timer timeoutTimer = null;
+
+            // Use ManualResetEvent to properly wait for either connection success or timeout
+            using (var connectionCompleted = new System.Threading.ManualResetEvent(false))
             {
-                using (var connection = new SqlConnection(connectionString))
+                // Create the timeout timer
+                timeoutTimer = new System.Threading.Timer(_ =>
                 {
-                    connection.Open();
-                    connection.Close();
-                    return true;
-                }
+                    timeoutOccurred = true;
+                    connectionCompleted.Set(); // Signal to continue execution
+                }, null, 3000, System.Threading.Timeout.Infinite); // 3000ms = 3 seconds
+
+                // Try to establish the connection in a separate thread
+                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try
+                    {
+                        using (var connection = new SqlConnection(connectionString))
+                        {
+                            connection.Open();
+                            connection.Close();
+                            connectionSuccessful = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        connectionException = ex;
+                    }
+
+                });
+
+                // Wait for either the connection to complete or the timeout to occur
+                connectionCompleted.WaitOne();
             }
-            catch
+
+            // Dispose of the timer
+            timeoutTimer?.Dispose();
+
+            // If we timed out, log the event
+            if (timeoutOccurred && !connectionSuccessful)
             {
-                return false;
+                // Optionally log the timeout
+                System.Diagnostics.Debug.WriteLine("Database connection attempt timed out after 3 seconds");
             }
+            else if (connectionException != null)
+            {
+                // Optionally log the exception
+                System.Diagnostics.Debug.WriteLine($"Database connection error: {connectionException.Message}");
+            }
+
+            return connectionSuccessful;
         }
 
         /// <summary>
@@ -188,7 +231,7 @@ namespace Manny_Tools_Claude
 
             try
             {
-                var connection = new SqlConnection(_connectionString);
+                var connection = CreateConnectionWithTimeout(_connectionString);
                 connection.Open();
                 return connection;
             }
@@ -217,7 +260,7 @@ namespace Manny_Tools_Claude
 
             try
             {
-                using (var connection = new SqlConnection(_connectionString))
+                using (var connection = CreateConnectionWithTimeout(_connectionString))
                 {
                     connection.Open();
                     action(connection);
@@ -228,6 +271,17 @@ namespace Manny_Tools_Claude
             {
                 return false;
             }
+        }
+        public static SqlConnection CreateConnectionWithTimeout(string connectionString)
+        {
+            // Create a SqlConnectionStringBuilder to safely modify the connection string
+            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+
+            // Set 3-second timeout
+            builder.ConnectTimeout = 3;
+
+            // Create and return connection with the modified connection string
+            return new SqlConnection(builder.ConnectionString);
         }
     }
 
@@ -243,4 +297,7 @@ namespace Manny_Tools_Claude
             ConnectionString = connectionString;
         }
     }
+
+
+
 }

@@ -21,7 +21,7 @@ namespace Manny_Tools_Claude
         /// <returns>A list of objects of type T populated with the query results.</returns>
         public static List<T> ExecuteQuery<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = new SqlConnection(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
             {
                 connection.Open();
                 return connection.Query<T>(query, parameters).AsList();
@@ -38,7 +38,7 @@ namespace Manny_Tools_Claude
         /// <returns>A single object of type T.</returns>
         public static T ExecuteSingle<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = new SqlConnection(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
             {
                 connection.Open();
                 return connection.QuerySingleOrDefault<T>(query, parameters);
@@ -55,7 +55,7 @@ namespace Manny_Tools_Claude
         /// <returns>The scalar value returned by the query.</returns>
         public static T ExecuteScalar<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = new SqlConnection(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
             {
                 connection.Open();
                 return connection.ExecuteScalar<T>(query, parameters);
@@ -71,7 +71,7 @@ namespace Manny_Tools_Claude
         /// <returns>The number of rows affected.</returns>
         public static int ExecuteNonQuery(string connectionString, string query, object parameters = null)
         {
-            using (var connection = new SqlConnection(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
             {
                 connection.Open();
                 return connection.Execute(query, parameters);
@@ -86,7 +86,7 @@ namespace Manny_Tools_Claude
         /// <returns>True if the transaction completed successfully, false otherwise.</returns>
         public static bool ExecuteInTransaction(string connectionString, Action<IDbConnection, IDbTransaction> actions)
         {
-            using (var connection = new SqlConnection(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
             {
                 connection.Open();
                 using (var transaction = connection.BeginTransaction())

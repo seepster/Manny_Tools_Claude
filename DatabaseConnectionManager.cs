@@ -1,20 +1,27 @@
 ﻿using System;
 using System.IO;
 using System.Windows.Forms;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
 {
     /// <summary>
     /// Centralized manager for database connections across the application
+    /// Handles connection creation, testing, and management with standardized timeouts
     /// </summary>
     public class DatabaseConnectionManager
     {
         // Singleton instance
         private static DatabaseConnectionManager _instance;
+        private static readonly object _lock = new object();
 
         // Connection string
         private string _connectionString;
+
+        // Standard timeout for all connections (5 seconds)
+        private const int CONNECTION_TIMEOUT_SECONDS = 5;
 
         // Events
         public event EventHandler<ConnectionChangedEventArgs> ConnectionChanged;
@@ -26,7 +33,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Gets the singleton instance
+        /// Gets the singleton instance with thread safety
         /// </summary>
         public static DatabaseConnectionManager Instance
         {
@@ -34,7 +41,13 @@ namespace Manny_Tools_Claude
             {
                 if (_instance == null)
                 {
-                    _instance = new DatabaseConnectionManager();
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new DatabaseConnectionManager();
+                        }
+                    }
                 }
                 return _instance;
             }
@@ -136,7 +149,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Tests a connection string
+        /// Tests a connection string with a 5-second timeout
         /// </summary>
         /// <param name="connectionString">The connection string to test</param>
         /// <returns>True if connection successful, false otherwise</returns>
@@ -147,70 +160,14 @@ namespace Manny_Tools_Claude
                 return false;
             }
 
-            bool connectionSuccessful = false;
-            bool timeoutOccurred = false;
-            Exception connectionException = null;
-
-            // Create a timer to enforce the 3-second timeout
-            System.Threading.Timer timeoutTimer = null;
-
-            // Use ManualResetEvent to properly wait for either connection success or timeout
-            using (var connectionCompleted = new System.Threading.ManualResetEvent(false))
+            return ExecuteWithTimeout(async () =>
             {
-                // Create the timeout timer
-                timeoutTimer = new System.Threading.Timer(_ =>
+                using (var connection = CreateConnection(connectionString))
                 {
-                    timeoutOccurred = true;
-                    connectionCompleted.Set(); // Signal to continue execution
-                }, null, 3000, System.Threading.Timeout.Infinite); // 3000ms = 3 seconds
-
-                // Try to establish the connection in a separate thread
-                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
-                {
-                    try
-                    {
-                        using (var connection = new SqlConnection(connectionString))
-                        {
-                            connection.Open();
-                            connection.Close();
-                            connectionSuccessful = true;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        connectionException = ex;
-                    }
-
-                });
-
-                // Wait for either the connection to complete or the timeout to occur
-                connectionCompleted.WaitOne();
-            }
-
-            // Dispose of the timer
-            timeoutTimer?.Dispose();
-
-            // If we timed out, log the event
-            if (timeoutOccurred && !connectionSuccessful)
-            {
-                // Optionally log the timeout
-                System.Diagnostics.Debug.WriteLine("Database connection attempt timed out after 3 seconds");
-            }
-            else if (connectionException != null)
-            {
-                // Optionally log the exception
-                System.Diagnostics.Debug.WriteLine($"Database connection error: {connectionException.Message}");
-            }
-
-            return connectionSuccessful;
-        }
-
-        /// <summary>
-        /// Raises the ConnectionChanged event
-        /// </summary>
-        protected virtual void OnConnectionChanged(ConnectionChangedEventArgs e)
-        {
-            ConnectionChanged?.Invoke(this, e);
+                    await connection.OpenAsync();
+                    return true;
+                }
+            });
         }
 
         /// <summary>
@@ -231,9 +188,23 @@ namespace Manny_Tools_Claude
 
             try
             {
-                var connection = CreateConnectionWithTimeout(_connectionString);
-                connection.Open();
-                return connection;
+                var connection = CreateConnection(_connectionString);
+
+                bool connected = ExecuteWithTimeout(async () =>
+                {
+                    await connection.OpenAsync();
+                    return true;
+                });
+
+                if (connected)
+                {
+                    return connection;
+                }
+                else
+                {
+                    connection.Dispose();
+                    return null;
+                }
             }
             catch
             {
@@ -260,9 +231,19 @@ namespace Manny_Tools_Claude
 
             try
             {
-                using (var connection = CreateConnectionWithTimeout(_connectionString))
+                using (var connection = CreateConnection(_connectionString))
                 {
-                    connection.Open();
+                    bool connected = ExecuteWithTimeout(async () =>
+                    {
+                        await connection.OpenAsync();
+                        return true;
+                    });
+
+                    if (!connected)
+                    {
+                        return false;
+                    }
+
                     action(connection);
                     return true;
                 }
@@ -272,16 +253,68 @@ namespace Manny_Tools_Claude
                 return false;
             }
         }
-        public static SqlConnection CreateConnectionWithTimeout(string connectionString)
+
+        /// <summary>
+        /// Creates a SQL connection with the standard 5-second timeout
+        /// </summary>
+        /// <param name="connectionString">The connection string</param>
+        /// <returns>A configured SqlConnection object (not yet opened)</returns>
+        public static SqlConnection CreateConnection(string connectionString)
         {
             // Create a SqlConnectionStringBuilder to safely modify the connection string
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
 
-            // Set 3-second timeout
-            builder.ConnectTimeout = 3;
+            // Set standard 5-second timeout
+            builder.ConnectTimeout = CONNECTION_TIMEOUT_SECONDS;
 
             // Create and return connection with the modified connection string
             return new SqlConnection(builder.ConnectionString);
+        }
+
+        /// <summary>
+        /// Executes a function with a 5-second timeout
+        /// </summary>
+        /// <typeparam name="T">The return type of the function</typeparam>
+        /// <param name="function">The async function to execute</param>
+        /// <returns>The result of the function or default if timeout occurred</returns>
+        private T ExecuteWithTimeout<T>(Func<Task<T>> function)
+        {
+            try
+            {
+                using (var tokenSource = new CancellationTokenSource())
+                {
+                    // Create a task that completes after the timeout
+                    var timeoutTask = Task.Delay(CONNECTION_TIMEOUT_SECONDS * 1000, tokenSource.Token);
+
+                    // Start the actual function
+                    var functionTask = function();
+
+                    // Wait for either the function to complete or the timeout to occur
+                    var completedTask = Task.WhenAny(functionTask, timeoutTask).GetAwaiter().GetResult();
+
+                    // If the function completed first, cancel the timeout and return the result
+                    if (completedTask == functionTask)
+                    {
+                        tokenSource.Cancel(); // Cancel the timeout task
+                        return functionTask.GetAwaiter().GetResult();
+                    }
+
+                    // If we got here, the timeout occurred first
+                    return default;
+                }
+            }
+            catch
+            {
+                return default;
+            }
+        }
+
+        /// <summary>
+        /// Raises the ConnectionChanged event
+        /// </summary>
+        protected virtual void OnConnectionChanged(ConnectionChangedEventArgs e)
+        {
+            ConnectionChanged?.Invoke(this, e);
         }
     }
 
@@ -297,7 +330,4 @@ namespace Manny_Tools_Claude
             ConnectionString = connectionString;
         }
     }
-
-
-
 }

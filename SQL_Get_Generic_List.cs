@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.Data.SqlClient;
 using Dapper;
 
@@ -8,9 +10,13 @@ namespace Manny_Tools_Claude
 {
     /// <summary>
     /// A helper class for executing SQL queries using Dapper and mapping the results to a generic type.
+    /// Implements consistent 5-second timeout for all operations.
     /// </summary>
     public static class SQL_Get_Generic_List
     {
+        // Standard timeout for all connections (5 seconds)
+        private const int CONNECTION_TIMEOUT_SECONDS = 5;
+
         /// <summary>
         /// Executes a SQL query and maps the results to a list of objects of type T using Dapper.
         /// </summary>
@@ -21,10 +27,15 @@ namespace Manny_Tools_Claude
         /// <returns>A list of objects of type T populated with the query results.</returns>
         public static List<T> ExecuteQuery<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                connection.Open();
-                return connection.Query<T>(query, parameters).AsList();
+                var result = ExecuteWithTimeout(async () =>
+                {
+                    await connection.OpenAsync();
+                    return await connection.QueryAsync<T>(query, parameters);
+                });
+
+                return result != null ? result.AsList() : new List<T>();
             }
         }
 
@@ -38,10 +49,13 @@ namespace Manny_Tools_Claude
         /// <returns>A single object of type T.</returns>
         public static T ExecuteSingle<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                connection.Open();
-                return connection.QuerySingleOrDefault<T>(query, parameters);
+                return ExecuteWithTimeout(async () =>
+                {
+                    await connection.OpenAsync();
+                    return await connection.QuerySingleOrDefaultAsync<T>(query, parameters);
+                });
             }
         }
 
@@ -55,10 +69,13 @@ namespace Manny_Tools_Claude
         /// <returns>The scalar value returned by the query.</returns>
         public static T ExecuteScalar<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                connection.Open();
-                return connection.ExecuteScalar<T>(query, parameters);
+                return ExecuteWithTimeout(async () =>
+                {
+                    await connection.OpenAsync();
+                    return await connection.ExecuteScalarAsync<T>(query, parameters);
+                });
             }
         }
 
@@ -71,10 +88,13 @@ namespace Manny_Tools_Claude
         /// <returns>The number of rows affected.</returns>
         public static int ExecuteNonQuery(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                connection.Open();
-                return connection.Execute(query, parameters);
+                return ExecuteWithTimeout(async () =>
+                {
+                    await connection.OpenAsync();
+                    return await connection.ExecuteAsync(query, parameters);
+                });
             }
         }
 
@@ -86,9 +106,19 @@ namespace Manny_Tools_Claude
         /// <returns>True if the transaction completed successfully, false otherwise.</returns>
         public static bool ExecuteInTransaction(string connectionString, Action<IDbConnection, IDbTransaction> actions)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                connection.Open();
+                bool connected = ExecuteWithTimeout(async () =>
+                {
+                    await connection.OpenAsync();
+                    return true;
+                });
+
+                if (!connected)
+                {
+                    return false;
+                }
+
                 using (var transaction = connection.BeginTransaction())
                 {
                     try
@@ -103,6 +133,44 @@ namespace Manny_Tools_Claude
                         throw;
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Executes a function with a 5-second timeout
+        /// </summary>
+        /// <typeparam name="T">The return type of the function</typeparam>
+        /// <param name="function">The async function to execute</param>
+        /// <returns>The result of the function or default if timeout occurred</returns>
+        private static T ExecuteWithTimeout<T>(Func<Task<T>> function)
+        {
+            try
+            {
+                using (var tokenSource = new CancellationTokenSource())
+                {
+                    // Create a task that completes after the timeout
+                    var timeoutTask = Task.Delay(CONNECTION_TIMEOUT_SECONDS * 1000, tokenSource.Token);
+
+                    // Start the actual function
+                    var functionTask = function();
+
+                    // Wait for either the function to complete or the timeout to occur
+                    var completedTask = Task.WhenAny(functionTask, timeoutTask).GetAwaiter().GetResult();
+
+                    // If the function completed first, cancel the timeout and return the result
+                    if (completedTask == functionTask)
+                    {
+                        tokenSource.Cancel(); // Cancel the timeout task
+                        return functionTask.GetAwaiter().GetResult();
+                    }
+
+                    // If we got here, the timeout occurred first
+                    return default;
+                }
+            }
+            catch
+            {
+                return default;
             }
         }
     }

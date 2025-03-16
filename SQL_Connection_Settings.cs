@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using System.IO;
-using System.Configuration;
+using System.Threading;
 
 namespace Manny_Tools_Claude
 {
@@ -23,6 +24,10 @@ namespace Manny_Tools_Claude
         private Button btnTest;
         private Button btnSave;
         private Button btnCancel;
+        private Label lblStatus;
+
+        // Standard timeout (5 seconds)
+        private const int CONNECTION_TIMEOUT_SECONDS = 5;
 
         // Event to notify that connection settings are saved
         public event EventHandler<ConnectionSettingsEventArgs> ConnectionSettingsSaved;
@@ -36,7 +41,7 @@ namespace Manny_Tools_Claude
         private void InitializeComponent()
         {
             this.Text = "Database Connection Settings";
-            this.Size = new Size(450, 350);
+            this.Size = new Size(450, 400);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -122,11 +127,20 @@ namespace Manny_Tools_Claude
                 Enabled = false
             };
 
+            // Status label (for displaying connection test results)
+            lblStatus = new Label
+            {
+                Location = new Point(20, 260),
+                Size = new Size(380, 40),
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Color.DarkBlue
+            };
+
             // Buttons
             btnTest = new Button
             {
                 Text = "Test Connection",
-                Location = new Point(20, 270),
+                Location = new Point(20, 310),
                 Size = new Size(120, 30)
             };
             btnTest.Click += BtnTest_Click;
@@ -134,7 +148,7 @@ namespace Manny_Tools_Claude
             btnSave = new Button
             {
                 Text = "Save & Connect",
-                Location = new Point(150, 270),
+                Location = new Point(150, 310),
                 Size = new Size(120, 30)
             };
             btnSave.Click += BtnSave_Click;
@@ -142,8 +156,9 @@ namespace Manny_Tools_Claude
             btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(280, 270),
-                Size = new Size(120, 30)
+                Location = new Point(280, 310),
+                Size = new Size(120, 30),
+                DialogResult = DialogResult.Cancel
             };
             btnCancel.Click += BtnCancel_Click;
 
@@ -158,9 +173,14 @@ namespace Manny_Tools_Claude
             this.Controls.Add(txtUsername);
             this.Controls.Add(lblPassword);
             this.Controls.Add(txtPassword);
+            this.Controls.Add(lblStatus);
             this.Controls.Add(btnTest);
             this.Controls.Add(btnSave);
             this.Controls.Add(btnCancel);
+
+            // Set accept and cancel buttons
+            this.AcceptButton = btnSave;
+            this.CancelButton = btnCancel;
         }
 
         private void ChkIntegratedSecurity_CheckedChanged(object sender, EventArgs e)
@@ -172,30 +192,56 @@ namespace Manny_Tools_Claude
             txtPassword.Enabled = useSqlAuth;
         }
 
-        private void BtnTest_Click(object sender, EventArgs e)
+        private async void BtnTest_Click(object sender, EventArgs e)
         {
             if (ValidateInputs())
             {
                 string connectionString = BuildConnectionString();
-                if (DatabaseConnectionManager.Instance.TestConnection(connectionString))
+
+                lblStatus.Text = "Testing connection...";
+                lblStatus.ForeColor = Color.DarkBlue;
+                btnTest.Enabled = false;
+                btnSave.Enabled = false;
+                Application.DoEvents();
+
+                bool connectionSuccessful = await TestConnectionAsync(connectionString);
+
+                btnTest.Enabled = true;
+                btnSave.Enabled = true;
+
+                if (connectionSuccessful)
                 {
-                    MessageBox.Show("Connection successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    lblStatus.Text = "Connection successful!";
+                    lblStatus.ForeColor = Color.Green;
                 }
                 else
                 {
-                    MessageBox.Show("Connection failed. Please check your settings and try again.",
-                        "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    lblStatus.Text = "Connection failed. Please check your settings and try again.";
+                    lblStatus.ForeColor = Color.Red;
                 }
             }
         }
 
-        private void BtnSave_Click(object sender, EventArgs e)
+        private async void BtnSave_Click(object sender, EventArgs e)
         {
             if (ValidateInputs())
             {
                 string connectionString = BuildConnectionString();
-                if (DatabaseConnectionManager.Instance.TestConnection(connectionString))
+
+                lblStatus.Text = "Testing connection before saving...";
+                lblStatus.ForeColor = Color.DarkBlue;
+                btnTest.Enabled = false;
+                btnSave.Enabled = false;
+                Application.DoEvents();
+
+                bool connectionSuccessful = await TestConnectionAsync(connectionString);
+
+                if (connectionSuccessful)
                 {
+                    lblStatus.Text = "Connection successful! Saving settings...";
+                    lblStatus.ForeColor = Color.Green;
+                    Application.DoEvents();
+
                     // Update and save connection string with the manager
                     if (DatabaseConnectionManager.Instance.UpdateConnectionString(connectionString))
                     {
@@ -207,14 +253,18 @@ namespace Manny_Tools_Claude
                     }
                     else
                     {
-                        MessageBox.Show("Failed to save connection settings. Please try again.",
-                            "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        lblStatus.Text = "Failed to save connection settings. Please try again.";
+                        lblStatus.ForeColor = Color.Red;
+                        btnTest.Enabled = true;
+                        btnSave.Enabled = true;
                     }
                 }
                 else
                 {
-                    MessageBox.Show("Connection failed. Please check your settings and try again.",
-                        "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    lblStatus.Text = "Connection failed. Please check your settings and try again.";
+                    lblStatus.ForeColor = Color.Red;
+                    btnTest.Enabled = true;
+                    btnSave.Enabled = true;
                 }
             }
         }
@@ -261,7 +311,7 @@ namespace Manny_Tools_Claude
                 DataSource = txtServer.Text,
                 InitialCatalog = txtDatabase.Text,
                 TrustServerCertificate = true,
-                ConnectTimeout = 3 // Set 3-second timeout
+                ConnectTimeout = CONNECTION_TIMEOUT_SECONDS // Set 5-second timeout
             };
 
             if (chkIntegratedSecurity.Checked)
@@ -306,6 +356,43 @@ namespace Manny_Tools_Claude
             catch
             {
                 // Ignore errors during loading - default values will be used
+            }
+        }
+
+        /// <summary>
+        /// Tests a connection asynchronously with a 5-second timeout
+        /// </summary>
+        /// <param name="connectionString">The connection string to test</param>
+        /// <returns>True if connection successful, false otherwise</returns>
+        private async Task<bool> TestConnectionAsync(string connectionString)
+        {
+            try
+            {
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                {
+                    using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                    {
+                        try
+                        {
+                            await connection.OpenAsync(cts.Token);
+                            return true;
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            // Timeout occurred
+                            return false;
+                        }
+                        catch
+                        {
+                            // Other connection error
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                return false;
             }
         }
     }

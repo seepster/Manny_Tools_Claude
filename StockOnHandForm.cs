@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
 using System.Data;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Dapper;
 using System.Linq;
 using System.IO;
+using System.Threading;
 
 namespace Manny_Tools_Claude
 {
@@ -18,6 +20,9 @@ namespace Manny_Tools_Claude
         private List<int> _visibleColumns = new List<int>();
         private string _currentUsername = "user";
 
+        // Standard timeout (5 seconds)
+        private const int CONNECTION_TIMEOUT_SECONDS = 5;
+
         // Form controls
         private Label lblTitle;
         private Label lblEnterPLU;
@@ -27,6 +32,7 @@ namespace Manny_Tools_Claude
         private DataGridView dgvStockInfo;
         private Panel panelControls;
         private Label lblConnectionStatus;
+        private Label lblSearchStatus;
 
         // Column definitions
         private Dictionary<int, string> _columnMap = new Dictionary<int, string>
@@ -120,22 +126,7 @@ namespace Manny_Tools_Claude
                     // Test the connection
                     if (!string.IsNullOrEmpty(_connectionString))
                     {
-                        // Check connection synchronously here
-                        try
-                        {
-                            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(_connectionString))
-                            {
-                                connection.Open();
-                                // Connection successful
-                                return true;
-                            }
-                        }
-                        catch
-                        {
-                            // Connection failed
-                            _connectionString = null;
-                            return false;
-                        }
+                        return SQL_Connection_Helper.TestConnection(_connectionString);
                     }
                 }
             }
@@ -241,6 +232,16 @@ namespace Manny_Tools_Claude
             btnClearGrid.Click += BtnClearGrid_Click;
             panelControls.Controls.Add(btnClearGrid);
 
+            // Add status label for search progress
+            lblSearchStatus = new Label
+            {
+                Location = new Point(175, 75),
+                Size = new Size(300, 23),
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Color.DarkBlue
+            };
+            panelControls.Controls.Add(lblSearchStatus);
+
             // Add a message about column configuration
             Label lblColumnInfo = new Label
             {
@@ -290,18 +291,18 @@ namespace Manny_Tools_Claude
                 e.SuppressKeyPress = true;
 
                 // Trigger the Get SOH button
-                PerformSearch();
+                PerformSearchAsync();
             }
         }
 
         private void BtnGetSOH_Click(object sender, EventArgs e)
         {
-            PerformSearch();
+            PerformSearchAsync();
         }
 
         // Extract search logic to a separate method so it can be called
         // from both button click and Enter key press
-        private void PerformSearch()
+        private async void PerformSearchAsync()
         {
             // If connection string is empty, try loading it again
             if (string.IsNullOrWhiteSpace(_connectionString))
@@ -324,82 +325,96 @@ namespace Manny_Tools_Claude
 
             try
             {
+                // Update UI to show search is in progress
+                lblSearchStatus.Text = "Searching...";
+                lblSearchStatus.ForeColor = Color.DarkBlue;
+                btnGetSOH.Enabled = false;
+                Application.DoEvents();
+
                 // Test connection before proceeding
-                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(_connectionString))
+                bool connectionValid = await TestConnectionAsync();
+                if (!connectionValid)
                 {
-                    try
-                    {
-                        connection.Open();
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Failed to connect to database: {ex.Message}",
-                            "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
+                    lblSearchStatus.Text = "Connection failed. Please check settings.";
+                    lblSearchStatus.ForeColor = Color.Red;
+                    btnGetSOH.Enabled = true;
+                    return;
                 }
 
-                if (ValidateProductCode(productCode))
+                // Validate product code with timeout
+                bool productValid = await ValidateProductCodeAsync(productCode);
+                if (!productValid)
                 {
-                    string productDescription = GetDescription(productCode);
-                    double sellPrice1 = GetSellPriceOne(productCode);
-                    List<double> stockNumbers = GetStockOnHandResults(productCode);
-
-                    double purchases = stockNumbers[0];
-                    double sold = stockNumbers[1];
-                    double claims = stockNumbers[2];
-                    double layBuyStart = stockNumbers[3];
-                    double layBuyFinish = stockNumbers[4];
-
-                    double soh = purchases - claims - sold;
-                    double inLayBuy = layBuyStart - layBuyFinish;
-
-                    // Create a new row
-                    int rowIndex = dgvStockInfo.Rows.Add();
-                    DataGridViewRow row = dgvStockInfo.Rows[rowIndex];
-
-                    // Fill data for all columns that exist
-                    foreach (DataGridViewColumn col in dgvStockInfo.Columns)
-                    {
-                        switch (col.Name)
-                        {
-                            case "PLU": row.Cells[col.Index].Value = productCode; break;
-                            case "Purchases": row.Cells[col.Index].Value = purchases; break;
-                            case "Claims": row.Cells[col.Index].Value = claims; break;
-                            case "Sold": row.Cells[col.Index].Value = sold; break;
-                            case "LayBuyStarted": row.Cells[col.Index].Value = layBuyStart; break;
-                            case "LayBuyFinished": row.Cells[col.Index].Value = layBuyFinish; break;
-                            case "SOH": row.Cells[col.Index].Value = soh; break;
-                            case "InLayBuy": row.Cells[col.Index].Value = inLayBuy; break;
-                            case "Description": row.Cells[col.Index].Value = productDescription; break;
-                            case "SellPrice1": row.Cells[col.Index].Value = sellPrice1; break;
-                        }
-                    }
-
-                    // Format monetary columns - right align and currency format
-                    foreach (DataGridViewColumn column in dgvStockInfo.Columns)
-                    {
-                        if (column.Name == "SellPrice1")
-                        {
-                            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-                            column.DefaultCellStyle.Format = "C2"; // Currency format with 2 decimal places
-                        }
-                    }
-
-                    txtPLU.Clear();
+                    lblSearchStatus.Text = "Invalid PLU code. Please try again.";
+                    lblSearchStatus.ForeColor = Color.Red;
+                    btnGetSOH.Enabled = true;
                     txtPLU.Focus();
+                    return;
                 }
-                else
+
+                // Get product data
+                string productDescription = await GetDescriptionAsync(productCode);
+                double sellPrice1 = await GetSellPriceOneAsync(productCode);
+                List<double> stockNumbers = await GetStockOnHandResultsAsync(productCode);
+
+                // Calculate derived values
+                double purchases = stockNumbers[0];
+                double sold = stockNumbers[1];
+                double claims = stockNumbers[2];
+                double layBuyStart = stockNumbers[3];
+                double layBuyFinish = stockNumbers[4];
+
+                double soh = purchases - claims - sold;
+                double inLayBuy = layBuyStart - layBuyFinish;
+
+                // Create a new row
+                int rowIndex = dgvStockInfo.Rows.Add();
+                DataGridViewRow row = dgvStockInfo.Rows[rowIndex];
+
+                // Fill data for all columns that exist
+                foreach (DataGridViewColumn col in dgvStockInfo.Columns)
                 {
-                    MessageBox.Show("Invalid PLU code. Please enter a valid product code.",
-                        "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtPLU.Focus();
+                    switch (col.Name)
+                    {
+                        case "PLU": row.Cells[col.Index].Value = productCode; break;
+                        case "Purchases": row.Cells[col.Index].Value = purchases; break;
+                        case "Claims": row.Cells[col.Index].Value = claims; break;
+                        case "Sold": row.Cells[col.Index].Value = sold; break;
+                        case "LayBuyStarted": row.Cells[col.Index].Value = layBuyStart; break;
+                        case "LayBuyFinished": row.Cells[col.Index].Value = layBuyFinish; break;
+                        case "SOH": row.Cells[col.Index].Value = soh; break;
+                        case "InLayBuy": row.Cells[col.Index].Value = inLayBuy; break;
+                        case "Description": row.Cells[col.Index].Value = productDescription; break;
+                        case "SellPrice1": row.Cells[col.Index].Value = sellPrice1; break;
+                    }
                 }
+
+                // Format monetary columns - right align and currency format
+                foreach (DataGridViewColumn column in dgvStockInfo.Columns)
+                {
+                    if (column.Name == "SellPrice1")
+                    {
+                        column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                        column.DefaultCellStyle.Format = "C2"; // Currency format with 2 decimal places
+                    }
+                }
+
+                // Clear status and input for next search
+                lblSearchStatus.Text = "Search complete.";
+                lblSearchStatus.ForeColor = Color.Green;
+                txtPLU.Clear();
+                txtPLU.Focus();
             }
             catch (Exception ex)
             {
+                lblSearchStatus.Text = "Error retrieving data.";
+                lblSearchStatus.ForeColor = Color.Red;
                 MessageBox.Show($"Error retrieving stock information: {ex.Message}",
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                btnGetSOH.Enabled = true;
             }
         }
 
@@ -413,6 +428,7 @@ namespace Manny_Tools_Claude
                 if (result == DialogResult.Yes)
                 {
                     dgvStockInfo.Rows.Clear();
+                    lblSearchStatus.Text = string.Empty;
                 }
             }
         }
@@ -421,21 +437,24 @@ namespace Manny_Tools_Claude
 
         #region Data Access Methods
 
-        private bool ValidateProductCode(string productCode)
+        private async Task<bool> TestConnectionAsync()
         {
-            if (string.IsNullOrEmpty(productCode))
-                return false;
-
             try
             {
-                string queryCheckPLUValid = $"SELECT ProductCode FROM ProductInfo WHERE ProductCode = @ProductCode";
-
-                using (IDbConnection connection = new SqlConnection(_connectionString))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
                 {
-                    var result = connection.QueryFirstOrDefault<string>(queryCheckPLUValid,
-                        new { ProductCode = productCode });
-
-                    return !string.IsNullOrEmpty(result);
+                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    {
+                        try
+                        {
+                            await connection.OpenAsync(cts.Token);
+                            return true;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }
                 }
             }
             catch
@@ -444,7 +463,35 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private List<double> GetStockOnHandResults(string productCode)
+        private async Task<bool> ValidateProductCodeAsync(string productCode)
+        {
+            if (string.IsNullOrEmpty(productCode))
+                return false;
+
+            try
+            {
+                string queryCheckPLUValid = $"SELECT ProductCode FROM ProductInfo WHERE ProductCode = @ProductCode";
+
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                {
+                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    {
+                        await connection.OpenAsync(cts.Token);
+                        var result = await connection.QueryFirstOrDefaultAsync<string>(
+                            queryCheckPLUValid,
+                            new { ProductCode = productCode });
+
+                        return !string.IsNullOrEmpty(result);
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task<List<double>> GetStockOnHandResultsAsync(string productCode)
         {
             // Define all the necessary stock queries
             string query1 = @"
@@ -485,42 +532,59 @@ namespace Manny_Tools_Claude
             string[] queries = { query1, query2, query4, query6, query7 };
             List<double> results = new List<double>();
 
-            using (IDbConnection connection = new SqlConnection(_connectionString))
+            try
             {
-                foreach (string query in queries)
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
                 {
-                    object result = connection.ExecuteScalar(query, new { ProductCode = productCode });
+                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    {
+                        await connection.OpenAsync(cts.Token);
 
-                    if (result == null || result == DBNull.Value)
-                    {
-                        results.Add(0);
-                    }
-                    else if (double.TryParse(result.ToString(), out double value))
-                    {
-                        results.Add(value);
-                    }
-                    else
-                    {
-                        results.Add(0);
+                        foreach (string query in queries)
+                        {
+                            object result = await connection.ExecuteScalarAsync(query, new { ProductCode = productCode });
+
+                            if (result == null || result == DBNull.Value)
+                            {
+                                results.Add(0);
+                            }
+                            else if (double.TryParse(result.ToString(), out double value))
+                            {
+                                results.Add(value);
+                            }
+                            else
+                            {
+                                results.Add(0);
+                            }
+                        }
                     }
                 }
-            }
 
-            return results;
+                return results;
+            }
+            catch
+            {
+                // Return zeros if there's an error
+                return new List<double> { 0, 0, 0, 0, 0 };
+            }
         }
 
-        private string GetDescription(string productCode)
+        private async Task<string> GetDescriptionAsync(string productCode)
         {
             try
             {
                 string query = "SELECT Description FROM ProductInfo WHERE ProductCode = @ProductCode";
 
-                using (IDbConnection connection = new SqlConnection(_connectionString))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
                 {
-                    string description = connection.QueryFirstOrDefault<string>(query,
-                        new { ProductCode = productCode });
+                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    {
+                        await connection.OpenAsync(cts.Token);
+                        string description = await connection.QueryFirstOrDefaultAsync<string>(
+                            query, new { ProductCode = productCode });
 
-                    return string.IsNullOrEmpty(description) ? "No Description available" : description;
+                        return string.IsNullOrEmpty(description) ? "No Description available" : description;
+                    }
                 }
             }
             catch
@@ -529,18 +593,22 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private double GetSellPriceOne(string productCode)
+        private async Task<double> GetSellPriceOneAsync(string productCode)
         {
             try
             {
                 string query = "SELECT SellingPriceIncl FROM ProductInfo WHERE ProductCode = @ProductCode";
 
-                using (IDbConnection connection = new SqlConnection(_connectionString))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
                 {
-                    var result = connection.QueryFirstOrDefault<double?>(query,
-                        new { ProductCode = productCode });
+                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    {
+                        await connection.OpenAsync(cts.Token);
+                        var result = await connection.QueryFirstOrDefaultAsync<double?>(
+                            query, new { ProductCode = productCode });
 
-                    return result ?? 0;
+                        return result ?? 0;
+                    }
                 }
             }
             catch
@@ -647,6 +715,7 @@ namespace Manny_Tools_Claude
                 _visibleColumns.Add(1);
             }
         }
+
         private string GetColumnSettingsFilePath(string username = null)
         {
             string appDataPath = Path.Combine(
@@ -686,7 +755,7 @@ namespace Manny_Tools_Claude
             dgvStockInfo.Columns.Clear();
 
             // Add columns based on visible settings
-            foreach (int columnId in _visibleColumns)
+            foreach (int columnId in _visibleColumns.OrderBy(id => id))
             {
                 if (_columnMap.TryGetValue(columnId, out string columnName))
                 {
@@ -727,15 +796,6 @@ namespace Manny_Tools_Claude
                     }
                 }
             }
-        }
-
-        private string GetColumnSettingsFilePath()
-        {
-            string appDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "MannyTools");
-
-            return Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ColumnsFile);
         }
 
         #endregion

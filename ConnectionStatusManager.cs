@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using System.Threading;
 
 namespace Manny_Tools_Claude
 {
@@ -19,14 +19,27 @@ namespace Manny_Tools_Claude
         public string LastErrorMessage { get; private set; }
         public DateTime LastCheckTime { get; private set; }
 
+        // Standard timeout for all connections (5 seconds)
+        private const int CONNECTION_TIMEOUT_SECONDS = 5;
+
         // Singleton instance
         private static ConnectionStatusManager _instance;
+        private static readonly object _lock = new object();
+
         public static ConnectionStatusManager Instance
         {
             get
             {
                 if (_instance == null)
-                    _instance = new ConnectionStatusManager();
+                {
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new ConnectionStatusManager();
+                        }
+                    }
+                }
                 return _instance;
             }
         }
@@ -40,7 +53,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Asynchronously checks the database connection status
+        /// Asynchronously checks the database connection status with a 5-second timeout
         /// </summary>
         /// <param name="connectionString">The connection string to test</param>
         public async Task CheckConnectionAsync(string connectionString)
@@ -51,22 +64,36 @@ namespace Manny_Tools_Claude
                 return;
             }
 
-            try
+            using (var tokenSource = new CancellationTokenSource(CONNECTION_TIMEOUT_SECONDS * 1000))
             {
-                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+                try
                 {
-                    await connection.OpenAsync();
-                    UpdateConnectionStatus(true, string.Empty);
+                    using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                    {
+                        try
+                        {
+                            await connection.OpenAsync(tokenSource.Token);
+                            UpdateConnectionStatus(true, string.Empty);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            UpdateConnectionStatus(false, "Connection attempt timed out after 5 seconds");
+                        }
+                        catch (Exception ex)
+                        {
+                            UpdateConnectionStatus(false, ex.Message);
+                        }
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                UpdateConnectionStatus(false, ex.Message);
+                catch (Exception ex)
+                {
+                    UpdateConnectionStatus(false, ex.Message);
+                }
             }
         }
 
         /// <summary>
-        /// Synchronously checks the database connection status
+        /// Synchronously checks the database connection status with a 5-second timeout
         /// </summary>
         /// <param name="connectionString">The connection string to test</param>
         public void CheckConnection(string connectionString)
@@ -77,17 +104,22 @@ namespace Manny_Tools_Claude
                 return;
             }
 
-            try
+            bool connected = ExecuteWithTimeout(async () =>
             {
-                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
                 {
-                    connection.Open();
-                    UpdateConnectionStatus(true, string.Empty);
+                    await connection.OpenAsync();
+                    return true;
                 }
-            }
-            catch (Exception ex)
+            });
+
+            if (connected)
             {
-                UpdateConnectionStatus(false, ex.Message);
+                UpdateConnectionStatus(true, string.Empty);
+            }
+            else
+            {
+                UpdateConnectionStatus(false, "Connection attempt timed out after 5 seconds");
             }
         }
 
@@ -150,6 +182,44 @@ namespace Manny_Tools_Claude
             else
             {
                 toolTip.SetToolTip(button, "Connection Error: " + LastErrorMessage + "\nLast checked: " + LastCheckTime.ToString("g"));
+            }
+        }
+
+        /// <summary>
+        /// Executes a function with a 5-second timeout
+        /// </summary>
+        /// <typeparam name="T">The return type of the function</typeparam>
+        /// <param name="function">The async function to execute</param>
+        /// <returns>The result of the function or default if timeout occurred</returns>
+        private T ExecuteWithTimeout<T>(Func<Task<T>> function)
+        {
+            try
+            {
+                using (var tokenSource = new CancellationTokenSource())
+                {
+                    // Create a task that completes after the timeout
+                    var timeoutTask = Task.Delay(CONNECTION_TIMEOUT_SECONDS * 1000, tokenSource.Token);
+
+                    // Start the actual function
+                    var functionTask = function();
+
+                    // Wait for either the function to complete or the timeout to occur
+                    var completedTask = Task.WhenAny(functionTask, timeoutTask).GetAwaiter().GetResult();
+
+                    // If the function completed first, cancel the timeout and return the result
+                    if (completedTask == functionTask)
+                    {
+                        tokenSource.Cancel(); // Cancel the timeout task
+                        return functionTask.GetAwaiter().GetResult();
+                    }
+
+                    // If we got here, the timeout occurred first
+                    return default;
+                }
+            }
+            catch
+            {
+                return default;
             }
         }
 

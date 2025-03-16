@@ -177,14 +177,9 @@ namespace Manny_Tools_Claude
             if (ValidateInputs())
             {
                 string connectionString = BuildConnectionString();
-                if (DatabaseConnectionManager.Instance.TestConnection(connectionString))
+                if (TestConnection(connectionString))
                 {
                     MessageBox.Show("Connection successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                else
-                {
-                    MessageBox.Show("Connection failed. Please check your settings and try again.",
-                        "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -194,27 +189,18 @@ namespace Manny_Tools_Claude
             if (ValidateInputs())
             {
                 string connectionString = BuildConnectionString();
-                if (DatabaseConnectionManager.Instance.TestConnection(connectionString))
+                if (TestConnection(connectionString))
                 {
-                    // Update and save connection string with the manager
-                    if (DatabaseConnectionManager.Instance.UpdateConnectionString(connectionString))
-                    {
-                        // Notify listeners
-                        ConnectionSettingsSaved?.Invoke(this, new ConnectionSettingsEventArgs(connectionString));
+                    // Save connection string
+                    SaveConnectionString(connectionString);
 
-                        this.DialogResult = DialogResult.OK;
-                        this.Close();
-                    }
-                    else
-                    {
-                        MessageBox.Show("Failed to save connection settings. Please try again.",
-                            "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Connection failed. Please check your settings and try again.",
-                        "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ConnectionStatusManager.Instance.CheckConnection(connectionString);
+
+                    // Raise the event
+                    ConnectionSettingsSaved?.Invoke(this, new ConnectionSettingsEventArgs(connectionString));
+
+                    this.DialogResult = DialogResult.OK;
+                    this.Close();
                 }
             }
         }
@@ -276,15 +262,55 @@ namespace Manny_Tools_Claude
             return builder.ConnectionString;
         }
 
+        private bool TestConnection(string connectionString)
+        {
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    connection.Close();
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Connection failed: {ex.Message}", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        private void SaveConnectionString(string connectionString)
+        {
+            try
+            {
+                // Save to app settings file - in a real application, consider encrypting this
+                string appDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MannyTools");
+
+                Directory.CreateDirectory(appDataPath);
+                File.WriteAllText(Path.Combine(appDataPath, "connection.config"), connectionString);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to save connection settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         private void LoadSavedSettings()
         {
             try
             {
-                // Get connection string from the manager
-                string connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                string appDataPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "MannyTools");
 
-                if (!string.IsNullOrEmpty(connectionString))
+                string configPath = Path.Combine(appDataPath, "connection.config");
+
+                if (File.Exists(configPath))
                 {
+                    string connectionString = File.ReadAllText(configPath);
                     SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
 
                     txtServer.Text = builder.DataSource;

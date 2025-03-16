@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using System.Drawing;
@@ -163,12 +162,7 @@ namespace Manny_Tools_Claude
                 string usersFile = LoginForm.GetUsersFilePath();
                 if (File.Exists(usersFile))
                 {
-                    // Read and decrypt the users file
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
-                    if (lines == null)
-                        return;
-
-                    foreach (string line in lines)
+                    foreach (string line in File.ReadAllLines(usersFile))
                     {
                         string[] parts = line.Split('|');
                         if (parts.Length >= 4 && parts[0] == _username)
@@ -248,20 +242,15 @@ namespace Manny_Tools_Claude
                 string usersFile = LoginForm.GetUsersFilePath();
                 if (File.Exists(usersFile))
                 {
-                    // Read and decrypt the users file
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
-                    if (lines != null)
+                    foreach (string line in File.ReadAllLines(usersFile))
                     {
-                        foreach (string line in lines)
+                        string[] parts = line.Split('|');
+                        if (parts.Length >= 4 && parts[0] == txtUsername.Text)
                         {
-                            string[] parts = line.Split('|');
-                            if (parts.Length >= 4 && parts[0] == txtUsername.Text)
-                            {
-                                MessageBox.Show("Username already exists. Please choose a different username.",
-                                    "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                                txtUsername.Focus();
-                                return false;
-                            }
+                            MessageBox.Show("Username already exists. Please choose a different username.",
+                                "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            txtUsername.Focus();
+                            return false;
                         }
                     }
                 }
@@ -288,35 +277,30 @@ namespace Manny_Tools_Claude
 
             if (File.Exists(usersFile))
             {
-                // Read and decrypt the existing users file
-                string[] existingLines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
-                if (existingLines != null)
+                foreach (string line in File.ReadAllLines(usersFile))
                 {
-                    foreach (string line in existingLines)
+                    string[] parts = line.Split('|');
+
+                    if (parts.Length >= 4 && parts[0] == (_isNewUser ? txtUsername.Text : _username))
                     {
-                        string[] parts = line.Split('|');
-
-                        if (parts.Length >= 4 && parts[0] == (_isNewUser ? txtUsername.Text : _username))
+                        // Update existing user
+                        if (!_isNewUser)
                         {
-                            // Update existing user
-                            if (!_isNewUser)
-                            {
-                                string passwordHash = string.IsNullOrEmpty(txtPassword.Text)
-                                    ? parts[1] // Keep existing password if not changed
-                                    : LoginForm.HashPassword(txtPassword.Text);
+                            string passwordHash = string.IsNullOrEmpty(txtPassword.Text)
+                                ? parts[1] // Keep existing password if not changed
+                                : LoginForm.HashPassword(txtPassword.Text);
 
-                                // Use default password flag (1) if password is changed, otherwise keep existing flag
-                                string defaultPasswordFlag = string.IsNullOrEmpty(txtPassword.Text) ? parts[3] : "1";
+                            // Use default password flag (1) if password is changed, otherwise keep existing flag
+                            string defaultPasswordFlag = string.IsNullOrEmpty(txtPassword.Text) ? parts[3] : "1";
 
-                                string updatedLine = $"{parts[0]}|{passwordHash}|{(int)selectedUserType}|{defaultPasswordFlag}";
-                                lines.Add(updatedLine);
-                                userUpdated = true;
-                            }
+                            string updatedLine = $"{parts[0]}|{passwordHash}|{(int)selectedUserType}|{defaultPasswordFlag}";
+                            lines.Add(updatedLine);
+                            userUpdated = true;
                         }
-                        else
-                        {
-                            lines.Add(line);
-                        }
+                    }
+                    else
+                    {
+                        lines.Add(line);
                     }
                 }
             }
@@ -329,8 +313,7 @@ namespace Manny_Tools_Claude
                 lines.Add(newLine);
             }
 
-            // Write encrypted data back to file
-            DataEncryptionHelper.WriteEncryptedLines(usersFile, lines.ToArray());
+            File.WriteAllLines(usersFile, lines.ToArray());
         }
     }
 }

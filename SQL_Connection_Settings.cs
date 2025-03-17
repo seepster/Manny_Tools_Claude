@@ -27,6 +27,7 @@ namespace Manny_Tools_Claude
             btnTest.Click += BtnTest_Click;
             btnSave.Click += BtnSave_Click;
             btnCancel.Click += BtnCancel_Click;
+            btnDiscover.Click += BtnDiscover_Click;
         }
 
         private void ChkIntegratedSecurity_CheckedChanged(object sender, EventArgs e)
@@ -252,6 +253,45 @@ namespace Manny_Tools_Claude
                 lblStatus.Text = "Could not load saved settings";
                 lblStatus.ForeColor = Color.Red;
                 System.Diagnostics.Debug.WriteLine($"Error loading saved settings: {ex.Message}");
+            }
+        }
+
+        private void BtnDiscover_Click(object sender, EventArgs e)
+        {
+            // Open the network discovery form
+            using (NetworkDiscoveryForm discoveryForm = new NetworkDiscoveryForm())
+            {
+                if (discoveryForm.ShowDialog() == DialogResult.OK)
+                {
+                    // User selected a connection, update the server and database fields
+                    string connectionString = discoveryForm.SelectedConnectionString;
+                    if (!string.IsNullOrEmpty(connectionString))
+                    {
+                        // Parse the connection string to get server and database info
+                        SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+
+                        // Update UI fields
+                        txtServer.Text = builder.DataSource;
+
+                        // If a database was specified, update the database field
+                        if (!string.IsNullOrEmpty(builder.InitialCatalog))
+                        {
+                            txtDatabase.Text = builder.InitialCatalog;
+                        }
+
+                        // Update authentication mode
+                        chkIntegratedSecurity.Checked = builder.IntegratedSecurity;
+                        if (!builder.IntegratedSecurity)
+                        {
+                            txtUsername.Text = builder.UserID;
+                            // Note: password isn't returned in the connection string for security reasons
+                        }
+
+                        // Show success message
+                        lblStatus.Text = "Server settings imported from discovery!";
+                        lblStatus.ForeColor = Color.Green;
+                    }
+                }
             }
         }
     }

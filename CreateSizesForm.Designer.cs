@@ -28,329 +28,299 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.topPanel = new System.Windows.Forms.Panel();
-            this.CreateCSVFileButton = new System.Windows.Forms.Button();
-            this.NextAvailableParentCodeButton = new System.Windows.Forms.Button();
-            this.ClearTemplateButton = new System.Windows.Forms.Button();
-            this.LoadTemplateButton = new System.Windows.Forms.Button();
-            this.Product_ParentCodeTextBox = new System.Windows.Forms.TextBox();
-            this.ParentProductCodeButton = new System.Windows.Forms.Button();
-            this.leftPanel = new System.Windows.Forms.Panel();
-            this.SelectNoneCheckBox = new System.Windows.Forms.CheckBox();
-            this.SelectAllCheckBox = new System.Windows.Forms.CheckBox();
-            this.SizeLinksListBox = new System.Windows.Forms.CheckedListBox();
-            this.ProductSizeComboBox = new System.Windows.Forms.ComboBox();
-            this.rightPanel = new System.Windows.Forms.Panel();
-            this.SupplierNameTextBox = new System.Windows.Forms.TextBox();
-            this.SupplierNameLabel = new System.Windows.Forms.Label();
-            this.SupplierNumberComboBox = new System.Windows.Forms.ComboBox();
-            this.SupplierNumberLabel = new System.Windows.Forms.Label();
-            this.SupplierCodeTextBox = new System.Windows.Forms.TextBox();
-            this.SupplierCodeLabel = new System.Windows.Forms.Label();
-            this.CostPriceExclTextBox = new System.Windows.Forms.TextBox();
-            this.CostPriceExclLabel = new System.Windows.Forms.Label();
-            this.MarkupTextBox = new System.Windows.Forms.TextBox();
-            this.MarkupLabel = new System.Windows.Forms.Label();
-            this.SizeSuffixTextBox = new System.Windows.Forms.TextBox();
-            this.SizeSuffixLabel = new System.Windows.Forms.Label();
-            this.DescriptionTextBox = new System.Windows.Forms.TextBox();
-            this.DescriptionLabel = new System.Windows.Forms.Label();
-            this.ProductSizeLabel = new System.Windows.Forms.Label();
-            this.SizeLinksLabel = new System.Windows.Forms.Label();
-            this.topPanel.SuspendLayout();
-            this.leftPanel.SuspendLayout();
-            this.rightPanel.SuspendLayout();
-            this.SuspendLayout();
+            topPanel = new Panel();
+            CreateCSVFileButton = new Button();
+            NextAvailableParentCodeButton = new Button();
+            ClearTemplateButton = new Button();
+            LoadTemplateButton = new Button();
+            Product_ParentCodeTextBox = new TextBox();
+            ParentProductCodeButton = new Button();
+            leftPanel = new Panel();
+            SizeLinksLabel = new Label();
+            ProductSizeLabel = new Label();
+            SelectAllCheckBox = new CheckBox();
+            SizeLinksListBox = new CheckedListBox();
+            ProductSizeComboBox = new ComboBox();
+            rightPanel = new Panel();
+            SupplierComboBox = new ComboBox();
+            SupplierNumberLabel = new Label();
+            SupplierCodeTextBox = new TextBox();
+            SupplierCodeLabel = new Label();
+            CostPriceExclTextBox = new TextBox();
+            CostPriceExclLabel = new Label();
+            MarkupTextBox = new TextBox();
+            MarkupLabel = new Label();
+            SizeSuffixTextBox = new TextBox();
+            SizeSuffixLabel = new Label();
+            DescriptionTextBox = new TextBox();
+            DescriptionLabel = new Label();
+            topPanel.SuspendLayout();
+            leftPanel.SuspendLayout();
+            rightPanel.SuspendLayout();
+            SuspendLayout();
             // 
             // topPanel
             // 
-            this.topPanel.Controls.Add(this.CreateCSVFileButton);
-            this.topPanel.Controls.Add(this.NextAvailableParentCodeButton);
-            this.topPanel.Controls.Add(this.ClearTemplateButton);
-            this.topPanel.Controls.Add(this.LoadTemplateButton);
-            this.topPanel.Controls.Add(this.Product_ParentCodeTextBox);
-            this.topPanel.Controls.Add(this.ParentProductCodeButton);
-            this.topPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.topPanel.Location = new System.Drawing.Point(0, 0);
-            this.topPanel.Name = "topPanel";
-            this.topPanel.Size = new System.Drawing.Size(800, 100);
-            this.topPanel.TabIndex = 0;
+            topPanel.Controls.Add(CreateCSVFileButton);
+            topPanel.Controls.Add(NextAvailableParentCodeButton);
+            topPanel.Controls.Add(ClearTemplateButton);
+            topPanel.Controls.Add(LoadTemplateButton);
+            topPanel.Controls.Add(Product_ParentCodeTextBox);
+            topPanel.Controls.Add(ParentProductCodeButton);
+            topPanel.Dock = DockStyle.Top;
+            topPanel.Location = new Point(0, 0);
+            topPanel.Name = "topPanel";
+            topPanel.Size = new Size(800, 100);
+            topPanel.TabIndex = 0;
             // 
             // CreateCSVFileButton
             // 
-            this.CreateCSVFileButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.CreateCSVFileButton.Location = new System.Drawing.Point(664, 12);
-            this.CreateCSVFileButton.Name = "CreateCSVFileButton";
-            this.CreateCSVFileButton.Size = new System.Drawing.Size(124, 32);
-            this.CreateCSVFileButton.TabIndex = 5;
-            this.CreateCSVFileButton.Text = "Create CSV File";
-            this.CreateCSVFileButton.UseVisualStyleBackColor = true;
+            CreateCSVFileButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            CreateCSVFileButton.Location = new Point(664, 12);
+            CreateCSVFileButton.Name = "CreateCSVFileButton";
+            CreateCSVFileButton.Size = new Size(124, 32);
+            CreateCSVFileButton.TabIndex = 5;
+            CreateCSVFileButton.Text = "Create CSV File";
+            CreateCSVFileButton.UseVisualStyleBackColor = true;
             // 
             // NextAvailableParentCodeButton
             // 
-            this.NextAvailableParentCodeButton.Location = new System.Drawing.Point(273, 69);
-            this.NextAvailableParentCodeButton.Name = "NextAvailableParentCodeButton";
-            this.NextAvailableParentCodeButton.Size = new System.Drawing.Size(203, 23);
-            this.NextAvailableParentCodeButton.TabIndex = 4;
-            this.NextAvailableParentCodeButton.Text = "Next available Parent Code";
-            this.NextAvailableParentCodeButton.UseVisualStyleBackColor = true;
+            NextAvailableParentCodeButton.Location = new Point(273, 69);
+            NextAvailableParentCodeButton.Name = "NextAvailableParentCodeButton";
+            NextAvailableParentCodeButton.Size = new Size(203, 23);
+            NextAvailableParentCodeButton.TabIndex = 4;
+            NextAvailableParentCodeButton.Text = "Next available Parent Code";
+            NextAvailableParentCodeButton.UseVisualStyleBackColor = true;
             // 
             // ClearTemplateButton
             // 
-            this.ClearTemplateButton.Location = new System.Drawing.Point(165, 69);
-            this.ClearTemplateButton.Name = "ClearTemplateButton";
-            this.ClearTemplateButton.Size = new System.Drawing.Size(102, 23);
-            this.ClearTemplateButton.TabIndex = 3;
-            this.ClearTemplateButton.Text = "Clear Template";
-            this.ClearTemplateButton.UseVisualStyleBackColor = true;
+            ClearTemplateButton.Location = new Point(165, 69);
+            ClearTemplateButton.Name = "ClearTemplateButton";
+            ClearTemplateButton.Size = new Size(102, 23);
+            ClearTemplateButton.TabIndex = 3;
+            ClearTemplateButton.Text = "Clear Template";
+            ClearTemplateButton.UseVisualStyleBackColor = true;
             // 
             // LoadTemplateButton
             // 
-            this.LoadTemplateButton.Location = new System.Drawing.Point(58, 69);
-            this.LoadTemplateButton.Name = "LoadTemplateButton";
-            this.LoadTemplateButton.Size = new System.Drawing.Size(101, 23);
-            this.LoadTemplateButton.TabIndex = 2;
-            this.LoadTemplateButton.Text = "Load Template";
-            this.LoadTemplateButton.UseVisualStyleBackColor = true;
+            LoadTemplateButton.Location = new Point(58, 69);
+            LoadTemplateButton.Name = "LoadTemplateButton";
+            LoadTemplateButton.Size = new Size(101, 23);
+            LoadTemplateButton.TabIndex = 2;
+            LoadTemplateButton.Text = "Load Template";
+            LoadTemplateButton.UseVisualStyleBackColor = true;
+            LoadTemplateButton.Click += LoadTemplateButton_Click;
             // 
             // Product_ParentCodeTextBox
             // 
-            this.Product_ParentCodeTextBox.Location = new System.Drawing.Point(165, 18);
-            this.Product_ParentCodeTextBox.Name = "Product_ParentCodeTextBox";
-            this.Product_ParentCodeTextBox.Size = new System.Drawing.Size(311, 23);
-            this.Product_ParentCodeTextBox.TabIndex = 1;
+            Product_ParentCodeTextBox.Location = new Point(165, 18);
+            Product_ParentCodeTextBox.Name = "Product_ParentCodeTextBox";
+            Product_ParentCodeTextBox.Size = new Size(311, 23);
+            Product_ParentCodeTextBox.TabIndex = 1;
             // 
             // ParentProductCodeButton
             // 
-            this.ParentProductCodeButton.Location = new System.Drawing.Point(12, 12);
-            this.ParentProductCodeButton.Name = "ParentProductCodeButton";
-            this.ParentProductCodeButton.Size = new System.Drawing.Size(147, 32);
-            this.ParentProductCodeButton.TabIndex = 0;
-            this.ParentProductCodeButton.Text = "Parent/Product Code";
-            this.ParentProductCodeButton.UseVisualStyleBackColor = true;
+            ParentProductCodeButton.Location = new Point(12, 12);
+            ParentProductCodeButton.Name = "ParentProductCodeButton";
+            ParentProductCodeButton.Size = new Size(147, 32);
+            ParentProductCodeButton.TabIndex = 0;
+            ParentProductCodeButton.Text = "Parent/Product Code";
+            ParentProductCodeButton.UseVisualStyleBackColor = true;
             // 
             // leftPanel
             // 
-            this.leftPanel.Controls.Add(this.SizeLinksLabel);
-            this.leftPanel.Controls.Add(this.ProductSizeLabel);
-            this.leftPanel.Controls.Add(this.SelectNoneCheckBox);
-            this.leftPanel.Controls.Add(this.SelectAllCheckBox);
-            this.leftPanel.Controls.Add(this.SizeLinksListBox);
-            this.leftPanel.Controls.Add(this.ProductSizeComboBox);
-            this.leftPanel.Dock = System.Windows.Forms.DockStyle.Left;
-            this.leftPanel.Location = new System.Drawing.Point(0, 100);
-            this.leftPanel.Name = "leftPanel";
-            this.leftPanel.Size = new System.Drawing.Size(272, 350);
-            this.leftPanel.TabIndex = 1;
-            // 
-            // SelectNoneCheckBox
-            // 
-            this.SelectNoneCheckBox.AutoSize = true;
-            this.SelectNoneCheckBox.Location = new System.Drawing.Point(165, 299);
-            this.SelectNoneCheckBox.Name = "SelectNoneCheckBox";
-            this.SelectNoneCheckBox.Size = new System.Drawing.Size(88, 19);
-            this.SelectNoneCheckBox.TabIndex = 3;
-            this.SelectNoneCheckBox.Text = "Select None";
-            this.SelectNoneCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // SelectAllCheckBox
-            // 
-            this.SelectAllCheckBox.AutoSize = true;
-            this.SelectAllCheckBox.Location = new System.Drawing.Point(12, 299);
-            this.SelectAllCheckBox.Name = "SelectAllCheckBox";
-            this.SelectAllCheckBox.Size = new System.Drawing.Size(74, 19);
-            this.SelectAllCheckBox.TabIndex = 2;
-            this.SelectAllCheckBox.Text = "Select All";
-            this.SelectAllCheckBox.UseVisualStyleBackColor = true;
-            // 
-            // SizeLinksListBox
-            // 
-            this.SizeLinksListBox.FormattingEnabled = true;
-            this.SizeLinksListBox.Location = new System.Drawing.Point(12, 112);
-            this.SizeLinksListBox.Name = "SizeLinksListBox";
-            this.SizeLinksListBox.Size = new System.Drawing.Size(241, 166);
-            this.SizeLinksListBox.TabIndex = 1;
-            // 
-            // ProductSizeComboBox
-            // 
-            this.ProductSizeComboBox.FormattingEnabled = true;
-            this.ProductSizeComboBox.Location = new System.Drawing.Point(12, 38);
-            this.ProductSizeComboBox.Name = "ProductSizeComboBox";
-            this.ProductSizeComboBox.Size = new System.Drawing.Size(241, 23);
-            this.ProductSizeComboBox.TabIndex = 0;
-            // 
-            // rightPanel
-            // 
-            this.rightPanel.Controls.Add(this.SupplierNameTextBox);
-            this.rightPanel.Controls.Add(this.SupplierNameLabel);
-            this.rightPanel.Controls.Add(this.SupplierNumberComboBox);
-            this.rightPanel.Controls.Add(this.SupplierNumberLabel);
-            this.rightPanel.Controls.Add(this.SupplierCodeTextBox);
-            this.rightPanel.Controls.Add(this.SupplierCodeLabel);
-            this.rightPanel.Controls.Add(this.CostPriceExclTextBox);
-            this.rightPanel.Controls.Add(this.CostPriceExclLabel);
-            this.rightPanel.Controls.Add(this.MarkupTextBox);
-            this.rightPanel.Controls.Add(this.MarkupLabel);
-            this.rightPanel.Controls.Add(this.SizeSuffixTextBox);
-            this.rightPanel.Controls.Add(this.SizeSuffixLabel);
-            this.rightPanel.Controls.Add(this.DescriptionTextBox);
-            this.rightPanel.Controls.Add(this.DescriptionLabel);
-            this.rightPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.rightPanel.Location = new System.Drawing.Point(272, 100);
-            this.rightPanel.Name = "rightPanel";
-            this.rightPanel.Size = new System.Drawing.Size(528, 350);
-            this.rightPanel.TabIndex = 2;
-            // 
-            // SupplierNameTextBox
-            // 
-            this.SupplierNameTextBox.Location = new System.Drawing.Point(181, 284);
-            this.SupplierNameTextBox.Name = "SupplierNameTextBox";
-            this.SupplierNameTextBox.ReadOnly = true;
-            this.SupplierNameTextBox.Size = new System.Drawing.Size(311, 23);
-            this.SupplierNameTextBox.TabIndex = 13;
-            // 
-            // SupplierNameLabel
-            // 
-            this.SupplierNameLabel.AutoSize = true;
-            this.SupplierNameLabel.Location = new System.Drawing.Point(22, 287);
-            this.SupplierNameLabel.Name = "SupplierNameLabel";
-            this.SupplierNameLabel.Size = new System.Drawing.Size(86, 15);
-            this.SupplierNameLabel.TabIndex = 12;
-            this.SupplierNameLabel.Text = "Supplier Name";
-            // 
-            // SupplierNumberComboBox
-            // 
-            this.SupplierNumberComboBox.FormattingEnabled = true;
-            this.SupplierNumberComboBox.Location = new System.Drawing.Point(181, 237);
-            this.SupplierNumberComboBox.Name = "SupplierNumberComboBox";
-            this.SupplierNumberComboBox.Size = new System.Drawing.Size(311, 23);
-            this.SupplierNumberComboBox.TabIndex = 11;
-            // 
-            // SupplierNumberLabel
-            // 
-            this.SupplierNumberLabel.AutoSize = true;
-            this.SupplierNumberLabel.Location = new System.Drawing.Point(22, 240);
-            this.SupplierNumberLabel.Name = "SupplierNumberLabel";
-            this.SupplierNumberLabel.Size = new System.Drawing.Size(99, 15);
-            this.SupplierNumberLabel.TabIndex = 10;
-            this.SupplierNumberLabel.Text = "Supplier Number";
-            // 
-            // SupplierCodeTextBox
-            // 
-            this.SupplierCodeTextBox.Location = new System.Drawing.Point(181, 190);
-            this.SupplierCodeTextBox.Name = "SupplierCodeTextBox";
-            this.SupplierCodeTextBox.Size = new System.Drawing.Size(311, 23);
-            this.SupplierCodeTextBox.TabIndex = 9;
-            // 
-            // SupplierCodeLabel
-            // 
-            this.SupplierCodeLabel.AutoSize = true;
-            this.SupplierCodeLabel.Location = new System.Drawing.Point(22, 193);
-            this.SupplierCodeLabel.Name = "SupplierCodeLabel";
-            this.SupplierCodeLabel.Size = new System.Drawing.Size(80, 15);
-            this.SupplierCodeLabel.TabIndex = 8;
-            this.SupplierCodeLabel.Text = "Supplier Code";
-            // 
-            // CostPriceExclTextBox
-            // 
-            this.CostPriceExclTextBox.Location = new System.Drawing.Point(181, 143);
-            this.CostPriceExclTextBox.Name = "CostPriceExclTextBox";
-            this.CostPriceExclTextBox.Size = new System.Drawing.Size(311, 23);
-            this.CostPriceExclTextBox.TabIndex = 7;
-            // 
-            // CostPriceExclLabel
-            // 
-            this.CostPriceExclLabel.AutoSize = true;
-            this.CostPriceExclLabel.Location = new System.Drawing.Point(22, 146);
-            this.CostPriceExclLabel.Name = "CostPriceExclLabel";
-            this.CostPriceExclLabel.Size = new System.Drawing.Size(83, 15);
-            this.CostPriceExclLabel.TabIndex = 6;
-            this.CostPriceExclLabel.Text = "CostPriceExcl";
-            // 
-            // MarkupTextBox
-            // 
-            this.MarkupTextBox.Location = new System.Drawing.Point(181, 96);
-            this.MarkupTextBox.Name = "MarkupTextBox";
-            this.MarkupTextBox.Size = new System.Drawing.Size(311, 23);
-            this.MarkupTextBox.TabIndex = 5;
-            // 
-            // MarkupLabel
-            // 
-            this.MarkupLabel.AutoSize = true;
-            this.MarkupLabel.Location = new System.Drawing.Point(22, 99);
-            this.MarkupLabel.Name = "MarkupLabel";
-            this.MarkupLabel.Size = new System.Drawing.Size(49, 15);
-            this.MarkupLabel.TabIndex = 4;
-            this.MarkupLabel.Text = "Markup";
-            // 
-            // SizeSuffixTextBox
-            // 
-            this.SizeSuffixTextBox.Location = new System.Drawing.Point(181, 49);
-            this.SizeSuffixTextBox.Name = "SizeSuffixTextBox";
-            this.SizeSuffixTextBox.ReadOnly = true;
-            this.SizeSuffixTextBox.Size = new System.Drawing.Size(311, 23);
-            this.SizeSuffixTextBox.TabIndex = 3;
-            // 
-            // SizeSuffixLabel
-            // 
-            this.SizeSuffixLabel.AutoSize = true;
-            this.SizeSuffixLabel.Location = new System.Drawing.Point(22, 52);
-            this.SizeSuffixLabel.Name = "SizeSuffixLabel";
-            this.SizeSuffixLabel.Size = new System.Drawing.Size(58, 15);
-            this.SizeSuffixLabel.TabIndex = 2;
-            this.SizeSuffixLabel.Text = "Size Suffix";
-            // 
-            // DescriptionTextBox
-            // 
-            this.DescriptionTextBox.Location = new System.Drawing.Point(181, 6);
-            this.DescriptionTextBox.Name = "DescriptionTextBox";
-            this.DescriptionTextBox.Size = new System.Drawing.Size(311, 23);
-            this.DescriptionTextBox.TabIndex = 1;
-            // 
-            // DescriptionLabel
-            // 
-            this.DescriptionLabel.AutoSize = true;
-            this.DescriptionLabel.Location = new System.Drawing.Point(22, 9);
-            this.DescriptionLabel.Name = "DescriptionLabel";
-            this.DescriptionLabel.Size = new System.Drawing.Size(67, 15);
-            this.DescriptionLabel.TabIndex = 0;
-            this.DescriptionLabel.Text = "Description";
-            // 
-            // ProductSizeLabel
-            // 
-            this.ProductSizeLabel.AutoSize = true;
-            this.ProductSizeLabel.Location = new System.Drawing.Point(12, 20);
-            this.ProductSizeLabel.Name = "ProductSizeLabel";
-            this.ProductSizeLabel.Size = new System.Drawing.Size(72, 15);
-            this.ProductSizeLabel.TabIndex = 4;
-            this.ProductSizeLabel.Text = "Product Size";
+            leftPanel.Controls.Add(SizeLinksLabel);
+            leftPanel.Controls.Add(ProductSizeLabel);
+            leftPanel.Controls.Add(SelectAllCheckBox);
+            leftPanel.Controls.Add(SizeLinksListBox);
+            leftPanel.Controls.Add(ProductSizeComboBox);
+            leftPanel.Dock = DockStyle.Left;
+            leftPanel.Location = new Point(0, 100);
+            leftPanel.Name = "leftPanel";
+            leftPanel.Size = new Size(272, 350);
+            leftPanel.TabIndex = 1;
             // 
             // SizeLinksLabel
             // 
-            this.SizeLinksLabel.AutoSize = true;
-            this.SizeLinksLabel.Location = new System.Drawing.Point(12, 94);
-            this.SizeLinksLabel.Name = "SizeLinksLabel";
-            this.SizeLinksLabel.Size = new System.Drawing.Size(56, 15);
-            this.SizeLinksLabel.TabIndex = 5;
-            this.SizeLinksLabel.Text = "Size Links";
+            SizeLinksLabel.AutoSize = true;
+            SizeLinksLabel.Location = new Point(12, 94);
+            SizeLinksLabel.Name = "SizeLinksLabel";
+            SizeLinksLabel.Size = new Size(57, 15);
+            SizeLinksLabel.TabIndex = 5;
+            SizeLinksLabel.Text = "Size Links";
+            // 
+            // ProductSizeLabel
+            // 
+            ProductSizeLabel.AutoSize = true;
+            ProductSizeLabel.Location = new Point(12, 20);
+            ProductSizeLabel.Name = "ProductSizeLabel";
+            ProductSizeLabel.Size = new Size(72, 15);
+            ProductSizeLabel.TabIndex = 4;
+            ProductSizeLabel.Text = "Product Size";
+            // 
+            // SelectAllCheckBox
+            // 
+            SelectAllCheckBox.AutoSize = true;
+            SelectAllCheckBox.Location = new Point(12, 299);
+            SelectAllCheckBox.Name = "SelectAllCheckBox";
+            SelectAllCheckBox.Size = new Size(74, 19);
+            SelectAllCheckBox.TabIndex = 2;
+            SelectAllCheckBox.Text = "Select All";
+            SelectAllCheckBox.UseVisualStyleBackColor = true;
+            SelectAllCheckBox.CheckedChanged += SelectAllCheckBox_CheckedChanged;
+            // 
+            // SizeLinksListBox
+            // 
+            SizeLinksListBox.FormattingEnabled = true;
+            SizeLinksListBox.Location = new Point(12, 112);
+            SizeLinksListBox.Name = "SizeLinksListBox";
+            SizeLinksListBox.Size = new Size(241, 166);
+            SizeLinksListBox.TabIndex = 1;
+            // 
+            // ProductSizeComboBox
+            // 
+            ProductSizeComboBox.FormattingEnabled = true;
+            ProductSizeComboBox.Location = new Point(12, 38);
+            ProductSizeComboBox.Name = "ProductSizeComboBox";
+            ProductSizeComboBox.Size = new Size(241, 23);
+            ProductSizeComboBox.TabIndex = 0;
+            ProductSizeComboBox.SelectedIndexChanged += ProductSizeComboBox_SelectedIndexChanged;
+            // 
+            // rightPanel
+            // 
+            rightPanel.Controls.Add(SupplierComboBox);
+            rightPanel.Controls.Add(SupplierNumberLabel);
+            rightPanel.Controls.Add(SupplierCodeTextBox);
+            rightPanel.Controls.Add(SupplierCodeLabel);
+            rightPanel.Controls.Add(CostPriceExclTextBox);
+            rightPanel.Controls.Add(CostPriceExclLabel);
+            rightPanel.Controls.Add(MarkupTextBox);
+            rightPanel.Controls.Add(MarkupLabel);
+            rightPanel.Controls.Add(SizeSuffixTextBox);
+            rightPanel.Controls.Add(SizeSuffixLabel);
+            rightPanel.Controls.Add(DescriptionTextBox);
+            rightPanel.Controls.Add(DescriptionLabel);
+            rightPanel.Dock = DockStyle.Fill;
+            rightPanel.Location = new Point(272, 100);
+            rightPanel.Name = "rightPanel";
+            rightPanel.Size = new Size(528, 350);
+            rightPanel.TabIndex = 2;
+            // 
+            // SupplierComboBox
+            // 
+            SupplierComboBox.FormattingEnabled = true;
+            SupplierComboBox.Location = new Point(181, 237);
+            SupplierComboBox.Name = "SupplierComboBox";
+            SupplierComboBox.Size = new Size(311, 23);
+            SupplierComboBox.TabIndex = 11;
+            SupplierComboBox.SelectedIndexChanged += SupplierNumberComboBox_SelectedIndexChanged;
+            // 
+            // SupplierNumberLabel
+            // 
+            SupplierNumberLabel.AutoSize = true;
+            SupplierNumberLabel.Location = new Point(22, 240);
+            SupplierNumberLabel.Name = "SupplierNumberLabel";
+            SupplierNumberLabel.Size = new Size(50, 15);
+            SupplierNumberLabel.TabIndex = 10;
+            SupplierNumberLabel.Text = "Supplier";
+            // 
+            // SupplierCodeTextBox
+            // 
+            SupplierCodeTextBox.Location = new Point(181, 190);
+            SupplierCodeTextBox.Name = "SupplierCodeTextBox";
+            SupplierCodeTextBox.Size = new Size(311, 23);
+            SupplierCodeTextBox.TabIndex = 9;
+            // 
+            // SupplierCodeLabel
+            // 
+            SupplierCodeLabel.AutoSize = true;
+            SupplierCodeLabel.Location = new Point(22, 193);
+            SupplierCodeLabel.Name = "SupplierCodeLabel";
+            SupplierCodeLabel.Size = new Size(81, 15);
+            SupplierCodeLabel.TabIndex = 8;
+            SupplierCodeLabel.Text = "Supplier Code";
+            // 
+            // CostPriceExclTextBox
+            // 
+            CostPriceExclTextBox.Location = new Point(181, 143);
+            CostPriceExclTextBox.Name = "CostPriceExclTextBox";
+            CostPriceExclTextBox.Size = new Size(311, 23);
+            CostPriceExclTextBox.TabIndex = 7;
+            // 
+            // CostPriceExclLabel
+            // 
+            CostPriceExclLabel.AutoSize = true;
+            CostPriceExclLabel.Location = new Point(22, 146);
+            CostPriceExclLabel.Name = "CostPriceExclLabel";
+            CostPriceExclLabel.Size = new Size(77, 15);
+            CostPriceExclLabel.TabIndex = 6;
+            CostPriceExclLabel.Text = "CostPriceExcl";
+            // 
+            // MarkupTextBox
+            // 
+            MarkupTextBox.Location = new Point(181, 96);
+            MarkupTextBox.Name = "MarkupTextBox";
+            MarkupTextBox.Size = new Size(311, 23);
+            MarkupTextBox.TabIndex = 5;
+            // 
+            // MarkupLabel
+            // 
+            MarkupLabel.AutoSize = true;
+            MarkupLabel.Location = new Point(22, 99);
+            MarkupLabel.Name = "MarkupLabel";
+            MarkupLabel.Size = new Size(48, 15);
+            MarkupLabel.TabIndex = 4;
+            MarkupLabel.Text = "Markup";
+            // 
+            // SizeSuffixTextBox
+            // 
+            SizeSuffixTextBox.Location = new Point(181, 49);
+            SizeSuffixTextBox.Name = "SizeSuffixTextBox";
+            SizeSuffixTextBox.ReadOnly = true;
+            SizeSuffixTextBox.Size = new Size(311, 23);
+            SizeSuffixTextBox.TabIndex = 3;
+            // 
+            // SizeSuffixLabel
+            // 
+            SizeSuffixLabel.AutoSize = true;
+            SizeSuffixLabel.Location = new Point(22, 52);
+            SizeSuffixLabel.Name = "SizeSuffixLabel";
+            SizeSuffixLabel.Size = new Size(59, 15);
+            SizeSuffixLabel.TabIndex = 2;
+            SizeSuffixLabel.Text = "Size Suffix";
+            // 
+            // DescriptionTextBox
+            // 
+            DescriptionTextBox.Location = new Point(181, 6);
+            DescriptionTextBox.Name = "DescriptionTextBox";
+            DescriptionTextBox.Size = new Size(311, 23);
+            DescriptionTextBox.TabIndex = 1;
+            // 
+            // DescriptionLabel
+            // 
+            DescriptionLabel.AutoSize = true;
+            DescriptionLabel.Location = new Point(22, 9);
+            DescriptionLabel.Name = "DescriptionLabel";
+            DescriptionLabel.Size = new Size(67, 15);
+            DescriptionLabel.TabIndex = 0;
+            DescriptionLabel.Text = "Description";
             // 
             // CreateSizesForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Controls.Add(this.rightPanel);
-            this.Controls.Add(this.leftPanel);
-            this.Controls.Add(this.topPanel);
-            this.Name = "CreateSizesForm";
-            this.Size = new System.Drawing.Size(800, 450);
-            this.topPanel.ResumeLayout(false);
-            this.topPanel.PerformLayout();
-            this.leftPanel.ResumeLayout(false);
-            this.leftPanel.PerformLayout();
-            this.rightPanel.ResumeLayout(false);
-            this.rightPanel.PerformLayout();
-            this.ResumeLayout(false);
-
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            Controls.Add(rightPanel);
+            Controls.Add(leftPanel);
+            Controls.Add(topPanel);
+            Name = "CreateSizesForm";
+            Size = new Size(800, 450);
+            topPanel.ResumeLayout(false);
+            topPanel.PerformLayout();
+            leftPanel.ResumeLayout(false);
+            leftPanel.PerformLayout();
+            rightPanel.ResumeLayout(false);
+            rightPanel.PerformLayout();
+            ResumeLayout(false);
         }
 
         #endregion
@@ -367,7 +337,6 @@
         private System.Windows.Forms.ComboBox ProductSizeComboBox;
         private System.Windows.Forms.CheckedListBox SizeLinksListBox;
         private System.Windows.Forms.CheckBox SelectAllCheckBox;
-        private System.Windows.Forms.CheckBox SelectNoneCheckBox;
         private System.Windows.Forms.Label DescriptionLabel;
         private System.Windows.Forms.TextBox DescriptionTextBox;
         private System.Windows.Forms.Label SizeSuffixLabel;
@@ -379,9 +348,7 @@
         private System.Windows.Forms.Label SupplierCodeLabel;
         private System.Windows.Forms.TextBox SupplierCodeTextBox;
         private System.Windows.Forms.Label SupplierNumberLabel;
-        private System.Windows.Forms.ComboBox SupplierNumberComboBox;
-        private System.Windows.Forms.Label SupplierNameLabel;
-        private System.Windows.Forms.TextBox SupplierNameTextBox;
+        private System.Windows.Forms.ComboBox SupplierComboBox;
         private System.Windows.Forms.Label ProductSizeLabel;
         private System.Windows.Forms.Label SizeLinksLabel;
     }

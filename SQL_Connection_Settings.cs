@@ -331,8 +331,24 @@ namespace Manny_Tools_Claude
         {
             try
             {
-                // Get connection string from the manager
+                // First try to get connection string from the manager
                 string connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+
+                // If that's empty, try to load directly from file
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    string appDataPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "MannyTools");
+
+                    string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+
+                    if (File.Exists(configPath))
+                    {
+                        // Read and decrypt connection string
+                        connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                    }
+                }
 
                 if (!string.IsNullOrEmpty(connectionString))
                 {
@@ -351,11 +367,18 @@ namespace Manny_Tools_Claude
                         txtUsername.Text = builder.UserID;
                         txtPassword.Text = builder.Password;
                     }
+
+                    // Display informational message
+                    lblStatus.Text = "Loaded existing connection settings";
+                    lblStatus.ForeColor = Color.DarkBlue;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore errors during loading - default values will be used
+                // Log the error but continue with default/empty values
+                lblStatus.Text = "Could not load saved settings";
+                lblStatus.ForeColor = Color.Red;
+                System.Diagnostics.Debug.WriteLine($"Error loading saved settings: {ex.Message}");
             }
         }
 
@@ -407,4 +430,4 @@ namespace Manny_Tools_Claude
             ConnectionString = connectionString;
         }
     }
-}
+} 

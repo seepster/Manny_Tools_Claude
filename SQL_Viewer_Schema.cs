@@ -4,8 +4,11 @@ using System.Drawing;
 using System.IO;
 using System.Collections.Generic;
 using System.Data;
-using Manny_Tools_Claude;
 using System.ComponentModel;
+using System.Threading.Tasks;
+using System.Threading;
+using Timer = System.Windows.Forms.Timer;
+
 
 namespace Manny_Tools_Claude
 {
@@ -15,6 +18,10 @@ namespace Manny_Tools_Claude
 
         private string _connectionString;
         private SQL_Mapper_Schema _schemaMapper;
+        private bool _isInitialized = false;
+
+        // Standard timeout value
+        private const int CONNECTION_TIMEOUT_SECONDS = 5;
 
         // Form controls
         private Label lblTitle;
@@ -30,6 +37,7 @@ namespace Manny_Tools_Claude
         private Panel panelLeft;
         private Panel panelRight;
         private SplitContainer splitContainer;
+        private Label lblStatus;
 
         #endregion
 
@@ -43,15 +51,60 @@ namespace Manny_Tools_Claude
             // Configure the table data grid
             ConfigureTableDataGrid();
 
-            // Check if we have a connection string
-            if (!string.IsNullOrEmpty(_connectionString))
-            {
-                InitializeSchemaMapper();
-            }
-
             // Subscribe to connection changes
             DatabaseConnectionManager.Instance.ConnectionChanged += DatabaseConnection_Changed;
             ConnectionStatusManager.Instance.ConnectionStatusChanged += ConnectionStatus_Changed;
+
+            // Subscribe to visibility changes to load data when tab becomes visible
+            this.VisibleChanged += SQL_Viewer_Schema_VisibleChanged;
+
+            // Attempt immediate initialization if connection is available
+            if (!string.IsNullOrEmpty(_connectionString) ||
+                !string.IsNullOrEmpty(DatabaseConnectionManager.Instance.ConnectionString))
+            {
+                // Use timer to allow UI to render first
+                Timer initTimer = new Timer();
+                initTimer.Interval = 100; // Short delay
+                initTimer.Tick += (s, e) => {
+                    initTimer.Stop();
+                    initTimer.Dispose();
+                    InitializeData();
+                };
+                initTimer.Start();
+            }
+        }
+
+        private void SQL_Viewer_Schema_VisibleChanged(object sender, EventArgs e)
+        {
+            if (this.Visible && !_isInitialized)
+            {
+                InitializeData();
+            }
+            else if (this.Visible && ConnectionStatusManager.Instance.IsConnected && lstTables.Items.Count == 0)
+            {
+                // Tab is visible, we're connected, but no tables loaded - try to load
+                InitializeData();
+            }
+        }
+
+        private void InitializeData()
+        {
+            // Try to get connection if needed
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+            }
+
+            if (!string.IsNullOrEmpty(_connectionString))
+            {
+                UpdateStatus("Initializing database connection...", Color.DarkBlue);
+                InitializeSchemaMapper();
+                _isInitialized = true; // Set initialization flag to prevent redundant loading
+            }
+            else
+            {
+                UpdateStatus("No database connection configured. Please set up connection settings.", Color.Red);
+            }
         }
 
         private void ConnectionStatus_Changed(object sender, ConnectionStatusEventArgs e)
@@ -84,12 +137,15 @@ namespace Manny_Tools_Claude
 
         private void CheckAndLoadTables()
         {
-            if (ConnectionStatusManager.Instance.IsConnected &&
-                string.IsNullOrEmpty(_connectionString))
+            if (ConnectionStatusManager.Instance.IsConnected)
             {
-                // Try to get the connection string from the manager
-                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
-                if (!string.IsNullOrEmpty(_connectionString))
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    // Try to get the connection string from the manager
+                    _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                }
+
+                if (!string.IsNullOrEmpty(_connectionString) && (lstTables.Items.Count == 0 || !_isInitialized))
                 {
                     InitializeSchemaMapper();
                 }
@@ -103,6 +159,7 @@ namespace Manny_Tools_Claude
                 // Unsubscribe from events
                 DatabaseConnectionManager.Instance.ConnectionChanged -= DatabaseConnection_Changed;
                 ConnectionStatusManager.Instance.ConnectionStatusChanged -= ConnectionStatus_Changed;
+                this.VisibleChanged -= SQL_Viewer_Schema_VisibleChanged;
             }
 
             base.Dispose(disposing);
@@ -140,7 +197,7 @@ namespace Manny_Tools_Claude
             {
                 Text = "Select a table from the list to view its structure and data.",
                 Location = new Point(10, 35),
-                Size = new Size(950, 20),
+                Size = new Size(850, 20),
                 Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
             };
 
@@ -153,10 +210,21 @@ namespace Manny_Tools_Claude
                 Size = new Size(100, 30)
             };
 
+            // Add status label
+            lblStatus = new Label
+            {
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                TextAlign = ContentAlignment.MiddleRight,
+                Location = new Point(600, 35),
+                Size = new Size(350, 20),
+                ForeColor = Color.DarkBlue
+            };
+
             // Add controls to header panel
             panelHeader.Controls.Add(lblTitle);
             panelHeader.Controls.Add(lblInstructions);
             panelHeader.Controls.Add(btnRefresh);
+            panelHeader.Controls.Add(lblStatus);
 
             // Content container to hold both the left panel and right content
             Panel contentContainer = new Panel
@@ -283,24 +351,6 @@ namespace Manny_Tools_Claude
             // Wire up events
             lstTables.SelectedIndexChanged += LstTables_SelectedIndexChanged;
             btnRefresh.Click += BtnRefresh_Click;
-
-            // Load tables on control shown
-            this.HandleCreated += SQL_Viewer_Schema_HandleCreated;
-        }
-
-        private void SQL_Viewer_Schema_HandleCreated(object sender, EventArgs e)
-        {
-            // Try to load tables if we have a connection
-            if (string.IsNullOrEmpty(_connectionString))
-            {
-                // Try to get connection string from the manager
-                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
-            }
-
-            if (!string.IsNullOrEmpty(_connectionString))
-            {
-                InitializeSchemaMapper();
-            }
         }
 
         private void ConfigureTableDataGrid()
@@ -351,37 +401,40 @@ namespace Manny_Tools_Claude
                     return;
                 }
 
+                UpdateStatus("Initializing schema mapper...", Color.DarkBlue);
                 _schemaMapper = new SQL_Mapper_Schema(_connectionString);
                 LoadTableList();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error initializing schema mapper: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                UpdateStatus($"Error initializing schema mapper: {ex.Message}", Color.Red);
             }
         }
 
-        private void LoadTableList()
+        private async void LoadTableList()
         {
             try
             {
+                UpdateStatus("Loading tables...", Color.DarkBlue);
                 Cursor.Current = Cursors.WaitCursor;
 
                 // Check if connection is active
-                if (!ConnectionStatusManager.Instance.IsConnected)
+                bool connectionActive = await TestConnectionAsync();
+                if (!connectionActive)
                 {
-                    ConnectionStatusManager.Instance.CheckConnection(_connectionString);
-                    if (!ConnectionStatusManager.Instance.IsConnected)
-                    {
-                        Cursor.Current = Cursors.Default;
-                        return;
-                    }
+                    UpdateStatus("Database connection failed. Please check connection settings.", Color.Red);
+                    Cursor.Current = Cursors.Default;
+                    return;
                 }
 
                 // Get table names
-                var tables = SQL_Get_Generic_List.ExecuteQuery<SQL_Mapper_Schema.TableInfo>(
-                    _connectionString,
-                    "SELECT name AS TableName, SCHEMA_NAME(schema_id) AS SchemaName FROM sys.tables ORDER BY name"
-                );
+                var tables = await GetTablesAsync();
+                if (tables == null || tables.Count == 0)
+                {
+                    UpdateStatus("No tables found in database.", Color.DarkBlue);
+                    Cursor.Current = Cursors.Default;
+                    return;
+                }
 
                 lstTables.Items.Clear();
                 foreach (var table in tables)
@@ -401,14 +454,59 @@ namespace Manny_Tools_Claude
                 {
                     lstTables.SelectedIndex = 0;
                 }
+
+                UpdateStatus($"Loaded {tables.Count} tables", Color.Green);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading tables: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                UpdateStatus($"Error loading tables: {ex.Message}", Color.Red);
             }
             finally
             {
                 Cursor.Current = Cursors.Default;
+            }
+        }
+
+        private async Task<bool> TestConnectionAsync()
+        {
+            try
+            {
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                {
+                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    {
+                        try
+                        {
+                            await connection.OpenAsync(cts.Token);
+                            return true;
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private async Task<List<SQL_Mapper_Schema.TableInfo>> GetTablesAsync()
+        {
+            try
+            {
+                return await Task.Run(() => {
+                    return SQL_Get_Generic_List.ExecuteQuery<SQL_Mapper_Schema.TableInfo>(
+                        _connectionString,
+                        "SELECT name AS TableName, SCHEMA_NAME(schema_id) AS SchemaName FROM sys.tables ORDER BY name"
+                    );
+                });
+            }
+            catch
+            {
+                return new List<SQL_Mapper_Schema.TableInfo>();
             }
         }
 
@@ -426,10 +524,11 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private void ShowTableDetails(string tableName)
+        private async void ShowTableDetails(string tableName)
         {
             try
             {
+                UpdateStatus($"Loading details for table: {tableName}...", Color.DarkBlue);
                 Cursor.Current = Cursors.WaitCursor;
 
                 // Update labels
@@ -460,20 +559,24 @@ namespace Manny_Tools_Claude
                     ORDER BY 
                         c.column_id";
 
-                var columns = SQL_Get_Generic_List.ExecuteQuery<ColumnDetail>(
+                var columns = await Task.Run(() => SQL_Get_Generic_List.ExecuteQuery<ColumnDetail>(
                     _connectionString,
                     columnsQuery,
                     new { TableName = tableName }
-                );
+                ));
+
+                if (columns == null || columns.Count == 0)
+                {
+                    UpdateStatus($"No columns found for table: {tableName}", Color.Red);
+                    return;
+                }
 
                 // Display columns in grid
                 dgvFields.DataSource = columns;
 
                 // Get and display sample data - get LATEST 10 records
+                string orderByColumn = await GetTableIdentityOrKeyColumnAsync(tableName);
                 string dataQuery;
-
-                // Try to identify primary key or identity column for proper ordering
-                string orderByColumn = GetTableIdentityOrKeyColumn(tableName);
 
                 if (!string.IsNullOrEmpty(orderByColumn))
                 {
@@ -483,18 +586,20 @@ namespace Manny_Tools_Claude
                 else
                 {
                     // Fallback - try to order by first column descending
-                    dataQuery = $"SELECT TOP 10 * FROM [{tableName}] ORDER BY (SELECT TOP 1 column_name FROM information_schema.columns WHERE table_name = '{tableName}') DESC";
+                    dataQuery = $"SELECT TOP 10 * FROM [{tableName}]";
                 }
 
-                var sampleData = GetTableData(tableName, dataQuery);
+                DataTable sampleData = await GetTableDataAsync(tableName, dataQuery);
                 dgvTableData.DataSource = sampleData;
 
                 // Apply formatting to monetary columns
                 FormatDataGridViewColumns(dgvTableData);
+
+                UpdateStatus($"Loaded table details for: {tableName}", Color.Green);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading table details: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                UpdateStatus($"Error loading table details: {ex.Message}", Color.Red);
             }
             finally
             {
@@ -502,7 +607,7 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private string GetTableIdentityOrKeyColumn(string tableName)
+        private async Task<string> GetTableIdentityOrKeyColumnAsync(string tableName)
         {
             try
             {
@@ -515,11 +620,11 @@ namespace Manny_Tools_Claude
                         AND COLUMNPROPERTY(c.object_id, c.name, 'IsIdentity') = 1
                     ORDER BY c.column_id";
 
-                string identityColumn = SQL_Get_Generic_List.ExecuteScalar<string>(
+                string identityColumn = await Task.Run(() => SQL_Get_Generic_List.ExecuteScalar<string>(
                     _connectionString,
                     identityQuery,
                     new { TableName = tableName }
-                );
+                ));
 
                 if (!string.IsNullOrEmpty(identityColumn))
                 {
@@ -537,11 +642,11 @@ namespace Manny_Tools_Claude
                         AND i.is_primary_key = 1
                     ORDER BY ic.key_ordinal";
 
-                string pkColumn = SQL_Get_Generic_List.ExecuteScalar<string>(
+                string pkColumn = await Task.Run(() => SQL_Get_Generic_List.ExecuteScalar<string>(
                     _connectionString,
                     pkQuery,
                     new { TableName = tableName }
-                );
+                ));
 
                 return pkColumn;
             }
@@ -551,17 +656,47 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private DataTable GetTableData(string tableName, string query)
+        private async Task<DataTable> GetTableDataAsync(string tableName, string query)
         {
-            using (var connection = new Microsoft.Data.SqlClient.SqlConnection(_connectionString))
+            DataTable dataTable = new DataTable();
+
+            try
             {
-                connection.Open();
-                using (var adapter = new Microsoft.Data.SqlClient.SqlDataAdapter(query, connection))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
                 {
-                    DataTable dataTable = new DataTable();
-                    adapter.Fill(dataTable);
-                    return dataTable;
+                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    {
+                        await connection.OpenAsync(cts.Token);
+
+                        using (var adapter = new Microsoft.Data.SqlClient.SqlDataAdapter(query, connection))
+                        {
+                            adapter.SelectCommand.CommandTimeout = CONNECTION_TIMEOUT_SECONDS;
+                            await Task.Run(() => adapter.Fill(dataTable));
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error loading table data: {ex.Message}", Color.Red);
+            }
+
+            return dataTable;
+        }
+
+        private void UpdateStatus(string message, Color color)
+        {
+            if (lblStatus.InvokeRequired)
+            {
+                lblStatus.Invoke(new Action(() => {
+                    lblStatus.Text = message;
+                    lblStatus.ForeColor = color;
+                }));
+            }
+            else
+            {
+                lblStatus.Text = message;
+                lblStatus.ForeColor = color;
             }
         }
 

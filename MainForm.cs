@@ -258,6 +258,14 @@ namespace Manny_Tools_Claude
             };
 
             tabViewSQL.Controls.Add(sqlViewer);
+
+            // Force the SQL viewer to initialize if this is the selected tab
+            if (tabControl.SelectedTab == tabViewSQL)
+            {
+                // Send a fake visibility changed event by toggling visibility
+                sqlViewer.Visible = false;
+                sqlViewer.Visible = true;
+            }
         }
 
         private void InitializeCreateSizes()

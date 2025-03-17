@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Windows.Forms;
-using Manny_Tools_Claude;
 using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
@@ -144,45 +143,35 @@ namespace Manny_Tools_Claude
 
             // Get sample data (first 10 rows)
             string query = $"SELECT TOP 10 * FROM [{tableName}]";
-            var sampleData = SQL_Get_Generic_List.ExecuteQuery<dynamic>(_connectionString, query);
 
-            // Create a DataTable
-            DataTable dataTable = new DataTable();
-
-            // If we have data, populate the grid
-            if (sampleData != null && sampleData.Count > 0)
+            try
             {
-                // Get the first row to determine columns
-                var firstRow = sampleData.First();
-
-                // Add columns to DataTable based on the properties in the dynamic object
-                foreach (var prop in firstRow.GetType().GetProperties())
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    dataTable.Columns.Add(prop.Name, prop.PropertyType);
-                }
+                    connection.Open();
 
-                // Add rows
-                foreach (var item in sampleData)
-                {
-                    DataRow row = dataTable.NewRow();
-                    foreach (var prop in item.GetType().GetProperties())
+                    using (var adapter = new SqlDataAdapter(query, connection))
                     {
-                        row[prop.Name] = prop.GetValue(item) ?? DBNull.Value;
+                        DataTable dataTable = new DataTable();
+                        adapter.Fill(dataTable);
+
+                        // Set the DataGridView's DataSource
+                        dataGridView.DataSource = dataTable;
+
+                        // Format the DataGridView
+                        dataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                        dataGridView.ReadOnly = true;
+                        dataGridView.AllowUserToAddRows = false;
+                        dataGridView.AllowUserToDeleteRows = false;
+                        dataGridView.RowHeadersVisible = false;
+                        dataGridView.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.AliceBlue;
                     }
-                    dataTable.Rows.Add(row);
                 }
             }
-
-            // Set the DataGridView's DataSource
-            dataGridView.DataSource = dataTable;
-
-            // Format the DataGridView
-            dataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dataGridView.ReadOnly = true;
-            dataGridView.AllowUserToAddRows = false;
-            dataGridView.AllowUserToDeleteRows = false;
-            dataGridView.RowHeadersVisible = false;
-            dataGridView.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.AliceBlue;
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading table data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         /// <summary>

@@ -1,5 +1,4 @@
-﻿using Manny_Tools_Claude;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -32,7 +31,7 @@ namespace Manny_Tools_Claude
 
             if (_requiredChange)
             {
-                this.ControlBox = false; // No  close button if change is required
+                this.ControlBox = false; // No close button if change is required
                 btnCancel.Text = "Exit Application";
             }
         }

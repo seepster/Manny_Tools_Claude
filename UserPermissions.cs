@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
-using System.Text;
 using System.Windows.Forms;
 
 namespace Manny_Tools_Claude
@@ -133,8 +132,8 @@ namespace Manny_Tools_Claude
                 string filePath = GetPermissionsFilePath();
                 if (File.Exists(filePath))
                 {
-                    // Read and decrypt the permissions file
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                    // Read the permissions file
+                    string[] lines = File.ReadAllLines(filePath);
                     if (lines == null)
                     {
                         SetDefaultPermissions();
@@ -214,8 +213,8 @@ namespace Manny_Tools_Claude
                     lines.Add($"{user.Key}|{permissions}");
                 }
 
-                // Write encrypted data to file
-                DataEncryptionHelper.WriteEncryptedLines(filePath, lines.ToArray());
+                // Write data to file
+                File.WriteAllLines(filePath, lines.ToArray());
             }
             catch (Exception ex)
             {
@@ -233,7 +232,7 @@ namespace Manny_Tools_Claude
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "MannyTools");
 
-            return Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.PermissionsFile);
+            return Path.Combine(appDataPath, "permissions.dat");
         }
     }
 }

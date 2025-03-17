@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Drawing;
-using System.IO;
 using System.Collections.Generic;
 using System.Data;
 using System.ComponentModel;
-using System.Threading.Tasks;
-using System.Threading;
+using Microsoft.Data.SqlClient;
 using Timer = System.Windows.Forms.Timer;
-
 
 namespace Manny_Tools_Claude
 {
@@ -19,9 +16,6 @@ namespace Manny_Tools_Claude
         private string _connectionString;
         private SQL_Mapper_Schema _schemaMapper;
         private bool _isInitialized = false;
-
-        // Standard timeout value
-        private const int CONNECTION_TIMEOUT_SECONDS = 5;
 
         // Form controls
         private Label lblTitle;
@@ -162,7 +156,7 @@ namespace Manny_Tools_Claude
             InitializeSchemaMapper();
         }
 
-        // New public method to explicitly load tables
+        // Explicitly load tables
         public void LoadDatabaseTables()
         {
             // Make sure we have the latest connection string
@@ -479,7 +473,7 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async void LoadTableList()
+        private void LoadTableList()
         {
             try
             {
@@ -487,7 +481,7 @@ namespace Manny_Tools_Claude
                 Cursor.Current = Cursors.WaitCursor;
 
                 // Check if connection is active
-                bool connectionActive = await TestConnectionAsync();
+                bool connectionActive = TestConnection();
                 if (!connectionActive)
                 {
                     UpdateStatus("Database connection failed. Please check connection settings.", Color.Red);
@@ -496,7 +490,7 @@ namespace Manny_Tools_Claude
                 }
 
                 // Get table names
-                var tables = await GetTablesAsync();
+                var tables = GetTables();
                 if (tables == null || tables.Count == 0)
                 {
                     UpdateStatus("No tables found in database.", Color.DarkBlue);
@@ -535,24 +529,14 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<bool> TestConnectionAsync()
+        private bool TestConnection()
         {
             try
             {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
-                    {
-                        try
-                        {
-                            await connection.OpenAsync(cts.Token);
-                            return true;
-                        }
-                        catch
-                        {
-                            return false;
-                        }
-                    }
+                    connection.Open();
+                    return true;
                 }
             }
             catch
@@ -561,16 +545,14 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<List<SQL_Mapper_Schema.TableInfo>> GetTablesAsync()
+        private List<SQL_Mapper_Schema.TableInfo> GetTables()
         {
             try
             {
-                return await Task.Run(() => {
-                    return SQL_Get_Generic_List.ExecuteQuery<SQL_Mapper_Schema.TableInfo>(
-                        _connectionString,
-                        "SELECT name AS TableName, SCHEMA_NAME(schema_id) AS SchemaName FROM sys.tables ORDER BY name"
-                    );
-                });
+                return SQL_Get_Generic_List.ExecuteQuery<SQL_Mapper_Schema.TableInfo>(
+                    _connectionString,
+                    "SELECT name AS TableName, SCHEMA_NAME(schema_id) AS SchemaName FROM sys.tables ORDER BY name"
+                );
             }
             catch
             {
@@ -592,7 +574,7 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async void ShowTableDetails(string tableName)
+        private void ShowTableDetails(string tableName)
         {
             try
             {
@@ -627,11 +609,11 @@ namespace Manny_Tools_Claude
                     ORDER BY 
                         c.column_id";
 
-                var columns = await Task.Run(() => SQL_Get_Generic_List.ExecuteQuery<ColumnDetail>(
+                var columns = SQL_Get_Generic_List.ExecuteQuery<ColumnDetail>(
                     _connectionString,
                     columnsQuery,
                     new { TableName = tableName }
-                ));
+                );
 
                 if (columns == null || columns.Count == 0)
                 {
@@ -643,7 +625,7 @@ namespace Manny_Tools_Claude
                 dgvFields.DataSource = columns;
 
                 // Get and display sample data - get LATEST 10 records
-                string orderByColumn = await GetTableIdentityOrKeyColumnAsync(tableName);
+                string orderByColumn = GetTableIdentityOrKeyColumn(tableName);
                 string dataQuery;
 
                 if (!string.IsNullOrEmpty(orderByColumn))
@@ -653,11 +635,11 @@ namespace Manny_Tools_Claude
                 }
                 else
                 {
-                    // Fallback - try to order by first column descending
+                    // Fallback - just get top 10 records
                     dataQuery = $"SELECT TOP 10 * FROM [{tableName}]";
                 }
 
-                DataTable sampleData = await GetTableDataAsync(tableName, dataQuery);
+                DataTable sampleData = GetTableData(tableName, dataQuery);
                 dgvTableData.DataSource = sampleData;
 
                 // Apply formatting to monetary columns
@@ -675,7 +657,7 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<string> GetTableIdentityOrKeyColumnAsync(string tableName)
+        private string GetTableIdentityOrKeyColumn(string tableName)
         {
             try
             {
@@ -688,11 +670,11 @@ namespace Manny_Tools_Claude
                         AND COLUMNPROPERTY(c.object_id, c.name, 'IsIdentity') = 1
                     ORDER BY c.column_id";
 
-                string identityColumn = await Task.Run(() => SQL_Get_Generic_List.ExecuteScalar<string>(
+                string identityColumn = SQL_Get_Generic_List.ExecuteScalar<string>(
                     _connectionString,
                     identityQuery,
                     new { TableName = tableName }
-                ));
+                );
 
                 if (!string.IsNullOrEmpty(identityColumn))
                 {
@@ -710,11 +692,11 @@ namespace Manny_Tools_Claude
                         AND i.is_primary_key = 1
                     ORDER BY ic.key_ordinal";
 
-                string pkColumn = await Task.Run(() => SQL_Get_Generic_List.ExecuteScalar<string>(
+                string pkColumn = SQL_Get_Generic_List.ExecuteScalar<string>(
                     _connectionString,
                     pkQuery,
                     new { TableName = tableName }
-                ));
+                );
 
                 return pkColumn;
             }
@@ -724,23 +706,19 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<DataTable> GetTableDataAsync(string tableName, string query)
+        private DataTable GetTableData(string tableName, string query)
         {
             DataTable dataTable = new DataTable();
 
             try
             {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
-                    {
-                        await connection.OpenAsync(cts.Token);
+                    connection.Open();
 
-                        using (var adapter = new Microsoft.Data.SqlClient.SqlDataAdapter(query, connection))
-                        {
-                            adapter.SelectCommand.CommandTimeout = CONNECTION_TIMEOUT_SECONDS;
-                            await Task.Run(() => adapter.Fill(dataTable));
-                        }
+                    using (var adapter = new SqlDataAdapter(query, connection))
+                    {
+                        adapter.Fill(dataTable);
                     }
                 }
             }

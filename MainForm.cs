@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using Timer = System.Windows.Forms.Timer;
 
 namespace Manny_Tools_Claude
 {
@@ -23,46 +21,6 @@ namespace Manny_Tools_Claude
 
         //Timer to check connection status
         private System.Windows.Forms.Timer _connectionCheckTimer;
-
-        // Add to the constructor after other initialization
-        private void SetupConnectionTimer()
-        {
-            _connectionCheckTimer = new System.Windows.Forms.Timer();
-            _connectionCheckTimer.Interval = 60000; // Check every minute
-            _connectionCheckTimer.Tick += ConnectionCheckTimer_Tick;
-            _connectionCheckTimer.Start();
-        }
-
-        // Add this event handler to MainForm
-        private void ConnectionCheckTimer_Tick(object sender, EventArgs e)
-        {
-            if (!string.IsNullOrEmpty(_connectionString))
-            {
-                // Use async version to avoid UI freezing
-                _ = ConnectionStatusManager.Instance.CheckConnectionAsync(_connectionString);
-            }
-        }
-
-        // Don't forget to clean up
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (_connectionCheckTimer != null)
-                {
-                    _connectionCheckTimer.Stop();
-                    _connectionCheckTimer.Dispose();
-                }
-
-                // Unsubscribe from events
-                if (ConnectionStatusManager.Instance != null)
-                {
-                    ConnectionStatusManager.Instance.ConnectionStatusChanged -= ConnectionStatus_Changed;
-                }
-            }
-
-            base.Dispose(disposing);
-        }
 
         // Form controls
         private TabControl tabControl;
@@ -126,17 +84,57 @@ namespace Manny_Tools_Claude
                 if (tabControl.TabPages.Contains(tabViewSQL) && sqlViewer != null)
                 {
                     // Add a short delay to allow UI to initialize before loading tables
-                    Task.Run(() => {
-                        Thread.Sleep(500); // Short delay to allow UI to initialize
-                        this.Invoke(new Action(() => {
-                            // Make sure we have the latest connection string
-                            sqlViewer.UpdateConnectionString(_connectionString);
-                            // Explicitly load database tables
-                            sqlViewer.LoadDatabaseTables();
-                        }));
-                    });
+                    Timer initTimer = new Timer();
+                    initTimer.Interval = 500; // Short delay to allow UI to initialize
+                    initTimer.Tick += (s, e) => {
+                        initTimer.Stop();
+                        initTimer.Dispose();
+
+                        // Make sure we have the latest connection string
+                        sqlViewer.UpdateConnectionString(_connectionString);
+                        // Explicitly load database tables
+                        sqlViewer.LoadDatabaseTables();
+                    };
+                    initTimer.Start();
                 }
             }
+        }
+
+        private void SetupConnectionTimer()
+        {
+            _connectionCheckTimer = new System.Windows.Forms.Timer();
+            _connectionCheckTimer.Interval = 60000; // Check every minute
+            _connectionCheckTimer.Tick += ConnectionCheckTimer_Tick;
+            _connectionCheckTimer.Start();
+        }
+
+        private void ConnectionCheckTimer_Tick(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(_connectionString))
+            {
+                // Check connection status
+                ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_connectionCheckTimer != null)
+                {
+                    _connectionCheckTimer.Stop();
+                    _connectionCheckTimer.Dispose();
+                }
+
+                // Unsubscribe from events
+                if (ConnectionStatusManager.Instance != null)
+                {
+                    ConnectionStatusManager.Instance.ConnectionStatusChanged -= ConnectionStatus_Changed;
+                }
+            }
+
+            base.Dispose(disposing);
         }
 
         private void InitializeComponent()
@@ -411,12 +409,12 @@ namespace Manny_Tools_Claude
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "MannyTools");
 
-                string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+                string configPath = Path.Combine(appDataPath, "connection.cfg");
 
                 if (File.Exists(configPath))
                 {
-                    // Read and decrypt connection string
-                    _connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                    // Read connection string
+                    _connectionString = File.ReadAllText(configPath);
 
                     if (string.IsNullOrEmpty(_connectionString))
                     {
@@ -468,7 +466,6 @@ namespace Manny_Tools_Claude
             {
                 stockOnHandForm.UpdateConnectionString(_connectionString);
             }
-
         }
 
         private void BtnSettings_Click(object sender, EventArgs e)
@@ -478,7 +475,6 @@ namespace Manny_Tools_Claude
 
         private void BtnUserManagement_Click(object sender, EventArgs e)
         {
-
             if (_currentUserType == UserType.SuperUser)
             {
                 using (UserManagementForm userManagementForm = new UserManagementForm(_currentUsername, _currentUserType))

@@ -36,62 +36,8 @@ namespace Manny_Tools_Claude
             AuthenticatedUsername = string.Empty;
             IsDefaultPassword = false;
 
-            // Reload all configuration data
-            ReloadConfigurationData();
-
             // Create default users if they don't exist
             CreateDefaultUsers();
-        }
-
-        /// <summary>
-        /// Reloads all configuration data when the login form is shown
-        /// </summary>
-        private void ReloadConfigurationData()
-        {
-            try
-            {
-                // Reset singletons to force reloading of configuration data
-                ResetSingletons();
-
-                // Re-initialize permissions
-                UserPermissions permissions = new UserPermissions();
-
-                // Check connection status to ensure it's refreshed
-                ConnectionStatusManager.Instance.CheckConnection(string.Empty);
-
-                // Clear database connection manager
-                DatabaseConnectionManager.Instance.LoadConnectionString();
-            }
-            catch (Exception ex)
-            {
-                // Log error but continue - not critical for login
-                Console.WriteLine($"Error reloading configuration: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Resets singleton instances to force configuration reload
-        /// </summary>
-        private void ResetSingletons()
-        {
-            // Use reflection to reset singleton instances
-            // This is a bit of a hack but necessary to force reloading of configuration
-            try
-            {
-                // Reset ConnectionStatusManager singleton
-                var fieldInfo = typeof(ConnectionStatusManager).GetField("_instance",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-                fieldInfo?.SetValue(null, null);
-
-                // Reset DatabaseConnectionManager singleton
-                fieldInfo = typeof(DatabaseConnectionManager).GetField("_instance",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-                fieldInfo?.SetValue(null, null);
-            }
-            catch
-            {
-                // Ignore errors - this is just an attempt to force refresh
-            }
         }
 
         private void InitializeComponent()
@@ -257,8 +203,8 @@ namespace Manny_Tools_Claude
                     return false;
                 }
 
-                // Read and decrypt the users file
-                string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                // Read users file
+                string[] lines = File.ReadAllLines(usersFile);
                 if (lines == null)
                     return false;
 
@@ -309,8 +255,8 @@ namespace Manny_Tools_Claude
                     string superUserLine = $"admin|{HashPassword("admin")}|{UserType.SuperUser}|1";
                     string standardUserLine = $"user|{HashPassword("user")}|{UserType.StandardUser}|1";
 
-                    // Write encrypted data to file
-                    DataEncryptionHelper.WriteEncryptedLines(usersFile, new[] { superUserLine, standardUserLine });
+                    // Write data to file
+                    File.WriteAllLines(usersFile, new[] { superUserLine, standardUserLine });
                 }
             }
             catch (Exception ex)
@@ -339,7 +285,7 @@ namespace Manny_Tools_Claude
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "MannyTools");
 
-            return Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.UsersFile);
+            return Path.Combine(appDataPath, "users.dat");
         }
     }
 

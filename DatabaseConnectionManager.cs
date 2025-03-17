@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Windows.Forms;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
@@ -73,12 +71,12 @@ namespace Manny_Tools_Claude
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "MannyTools");
 
-                string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+                string configPath = Path.Combine(appDataPath, "connection.cfg");
 
                 if (File.Exists(configPath))
                 {
-                    // Read and decrypt connection string
-                    string connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                    // Read connection string
+                    string connectionString = File.ReadAllText(configPath);
 
                     // Test the connection
                     if (!string.IsNullOrEmpty(connectionString) && TestConnection(connectionString))
@@ -126,10 +124,10 @@ namespace Manny_Tools_Claude
                     "MannyTools");
 
                 Directory.CreateDirectory(appDataPath);
-                string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+                string configPath = Path.Combine(appDataPath, "connection.cfg");
 
-                // Encrypt and save connection string
-                DataEncryptionHelper.WriteEncryptedFile(configPath, connectionString);
+                // Save connection string
+                File.WriteAllText(configPath, connectionString);
 
                 // Update local connection string
                 _connectionString = connectionString;
@@ -160,14 +158,18 @@ namespace Manny_Tools_Claude
                 return false;
             }
 
-            return ExecuteWithTimeout(async () =>
+            try
             {
                 using (var connection = CreateConnection(connectionString))
                 {
-                    await connection.OpenAsync();
+                    connection.Open();
                     return true;
                 }
-            });
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -189,22 +191,8 @@ namespace Manny_Tools_Claude
             try
             {
                 var connection = CreateConnection(_connectionString);
-
-                bool connected = ExecuteWithTimeout(async () =>
-                {
-                    await connection.OpenAsync();
-                    return true;
-                });
-
-                if (connected)
-                {
-                    return connection;
-                }
-                else
-                {
-                    connection.Dispose();
-                    return null;
-                }
+                connection.Open();
+                return connection;
             }
             catch
             {
@@ -233,17 +221,7 @@ namespace Manny_Tools_Claude
             {
                 using (var connection = CreateConnection(_connectionString))
                 {
-                    bool connected = ExecuteWithTimeout(async () =>
-                    {
-                        await connection.OpenAsync();
-                        return true;
-                    });
-
-                    if (!connected)
-                    {
-                        return false;
-                    }
-
+                    connection.Open();
                     action(connection);
                     return true;
                 }
@@ -269,44 +247,6 @@ namespace Manny_Tools_Claude
 
             // Create and return connection with the modified connection string
             return new SqlConnection(builder.ConnectionString);
-        }
-
-        /// <summary>
-        /// Executes a function with a 5-second timeout
-        /// </summary>
-        /// <typeparam name="T">The return type of the function</typeparam>
-        /// <param name="function">The async function to execute</param>
-        /// <returns>The result of the function or default if timeout occurred</returns>
-        private T ExecuteWithTimeout<T>(Func<Task<T>> function)
-        {
-            try
-            {
-                using (var tokenSource = new CancellationTokenSource())
-                {
-                    // Create a task that completes after the timeout
-                    var timeoutTask = Task.Delay(CONNECTION_TIMEOUT_SECONDS * 1000, tokenSource.Token);
-
-                    // Start the actual function
-                    var functionTask = function();
-
-                    // Wait for either the function to complete or the timeout to occur
-                    var completedTask = Task.WhenAny(functionTask, timeoutTask).GetAwaiter().GetResult();
-
-                    // If the function completed first, cancel the timeout and return the result
-                    if (completedTask == functionTask)
-                    {
-                        tokenSource.Cancel(); // Cancel the timeout task
-                        return functionTask.GetAwaiter().GetResult();
-                    }
-
-                    // If we got here, the timeout occurred first
-                    return default;
-                }
-            }
-            catch
-            {
-                return default;
-            }
         }
 
         /// <summary>

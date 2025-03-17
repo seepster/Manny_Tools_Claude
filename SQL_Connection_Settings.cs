@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Drawing;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using System.IO;
-using System.Threading;
 
 namespace Manny_Tools_Claude
 {
@@ -192,7 +190,7 @@ namespace Manny_Tools_Claude
             txtPassword.Enabled = useSqlAuth;
         }
 
-        private async void BtnTest_Click(object sender, EventArgs e)
+        private void BtnTest_Click(object sender, EventArgs e)
         {
             if (ValidateInputs())
             {
@@ -204,7 +202,7 @@ namespace Manny_Tools_Claude
                 btnSave.Enabled = false;
                 Application.DoEvents();
 
-                bool connectionSuccessful = await TestConnectionAsync(connectionString);
+                bool connectionSuccessful = TestConnection(connectionString);
 
                 btnTest.Enabled = true;
                 btnSave.Enabled = true;
@@ -222,7 +220,7 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async void BtnSave_Click(object sender, EventArgs e)
+        private void BtnSave_Click(object sender, EventArgs e)
         {
             if (ValidateInputs())
             {
@@ -234,7 +232,7 @@ namespace Manny_Tools_Claude
                 btnSave.Enabled = false;
                 Application.DoEvents();
 
-                bool connectionSuccessful = await TestConnectionAsync(connectionString);
+                bool connectionSuccessful = TestConnection(connectionString);
 
                 if (connectionSuccessful)
                 {
@@ -327,6 +325,22 @@ namespace Manny_Tools_Claude
             return builder.ConnectionString;
         }
 
+        private bool TestConnection(string connectionString)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private void LoadSavedSettings()
         {
             try
@@ -341,12 +355,12 @@ namespace Manny_Tools_Claude
                         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                         "MannyTools");
 
-                    string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+                    string configPath = Path.Combine(appDataPath, "connection.cfg");
 
                     if (File.Exists(configPath))
                     {
-                        // Read and decrypt connection string
-                        connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                        // Read connection string
+                        connectionString = File.ReadAllText(configPath);
                     }
                 }
 
@@ -381,43 +395,6 @@ namespace Manny_Tools_Claude
                 System.Diagnostics.Debug.WriteLine($"Error loading saved settings: {ex.Message}");
             }
         }
-
-        /// <summary>
-        /// Tests a connection asynchronously with a 5-second timeout
-        /// </summary>
-        /// <param name="connectionString">The connection string to test</param>
-        /// <returns>True if connection successful, false otherwise</returns>
-        private async Task<bool> TestConnectionAsync(string connectionString)
-        {
-            try
-            {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
-                {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
-                    {
-                        try
-                        {
-                            await connection.OpenAsync(cts.Token);
-                            return true;
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            // Timeout occurred
-                            return false;
-                        }
-                        catch
-                        {
-                            // Other connection error
-                            return false;
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
     }
 
     // EventArgs class to pass connection string information
@@ -430,4 +407,4 @@ namespace Manny_Tools_Claude
             ConnectionString = connectionString;
         }
     }
-} 
+}

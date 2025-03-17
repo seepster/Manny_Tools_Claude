@@ -11,7 +11,7 @@ namespace Manny_Tools_Claude
     public static class SQL_Connection_Helper
     {
         // Standard timeout for all connections (5 seconds)
-        public const int CONNECTION_TIMEOUT_SECONDS = 5;
+        public const int CONNECTION_TIMEOUT_SECONDS = 15;
 
         /// <summary>
         /// Executes an async function with a 5-second timeout

@@ -9,87 +9,53 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Drawing.Text;
+using Manny_Tools_Claude.DTO;
 
 namespace Manny_Tools_Claude
 {
     public partial class CreateSizesForm : UserControl
     {
         // Define fields to store form data
-        private List<ProductSizeItem> productSizes = new List<ProductSizeItem>();
-        private List<SizeLinkItem> sizeLinks = new List<SizeLinkItem>();
-        private List<Supplier> suppliers = new List<Supplier>();
-        private Supplier selectedSupplier;
-        private TemplateItem activeTemplate;
-
-
-        // Class to hold ParentCode Template
-        private class TemplateItem
-        {
-            public string ParentCode { get; set; }
-            public string Description { get; set; }
-            public ProductSizeItem ProductSize { get; set; }
-            public List<SizeLinkItem> SizeLinks { get; set; }
-
-            public double Markup { get; set; }
-            public double CostPriceExcl { get; set; }
-            public string SupplierCode { get; set; }
-            public Supplier Supplier { get; set; }
-
-        }
-
-        private class Supplier
-        {
-            public string SupplierNumber { get; set; }
-            public string SupplierName { get; set; }
-            public override string ToString()
-            {
-                return $"{SupplierNumber} - {SupplierName}";
-            }
-        }
-
-        // Class to hold ProductSize data
-        private class ProductSizeItem
-        {
-            public int Number { get; set; }
-            public string Description { get; set; }
-
-            public override string ToString()
-            {
-                return $"{Number} {Description}";
-            }
-        }
-
-        // Class to hold SizeLink data
-        private class SizeLinkItem
-        {
-            public string SizeCode { get; set; }
-            public string Description { get; set; }
-
-            public override string ToString()
-            {
-                return $"{SizeCode} - {Description}";
-            }
-        }
+        private List<CreateSizesProductSizeItem> productSizes = new List<CreateSizesProductSizeItem>();
+        private List<CreateSizesSizeLinkItem> sizeLinks = new List<CreateSizesSizeLinkItem>();
+        private List<CreateSizesSupplierItem> suppliers = new List<CreateSizesSupplierItem>();
+        private CreateSizesProductSizeItem selectedProductSize = new CreateSizesProductSizeItem();
+        private CreateSizesSupplierItem selectedSupplier = new CreateSizesSupplierItem();
+        private CreateSizesTemplateItem activeTemplate = new CreateSizesTemplateItem();
 
         public CreateSizesForm()
         {
             InitializeComponent();
-            LoadProductSizes();
-            LoadSizeLinks();
-            LoadSuppliers();
+            try
+            {
+                LoadProductSizes();
+                LoadSizeLinks();
+                LoadSuppliers();
+            }
+            catch
+            {
+                MessageBox.Show("Some elements could not be loaded.");
+            }
+           
         }
 
         public void LoadProductSizes()
         {
             //load Product Size dropdown from sql connection
             string queryForProductSize = "select Number, Description from ProductSize";
-            productSizes = SQL_Get_Generic_List.ExecuteQuery<ProductSizeItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForProductSize, null);
-
-            foreach (ProductSizeItem item in productSizes)
+            try
             {
-                ProductSizeComboBox.Items.Add(item.ToString());
-            }
+                productSizes = SQL_Get_Generic_List.ExecuteQuery<CreateSizesProductSizeItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForProductSize, null);
 
+                foreach (CreateSizesProductSizeItem item in productSizes)
+                {
+                    ProductSizeComboBox.Items.Add(item.ToString());
+                }
+            }
+            catch
+            {
+                MessageBox.Show("No element could be loaded.");
+            }
         }
 
         public void LoadSizeLinks()
@@ -99,12 +65,12 @@ namespace Manny_Tools_Claude
             if (selectedProductSize < 0 || selectedProductSize > ProductSizeComboBox.Items.Count)
             {
                 selectedProductSize = 0;
-            }
+            } 
             //load SizeLink list from sql connection using selected Product Size
             string queryForSizeLink = $"select SizeCode, Description from SizeLink where Holder = '{productSizes[selectedProductSize].Number}'";
-            sizeLinks = SQL_Get_Generic_List.ExecuteQuery<SizeLinkItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForSizeLink, null);
+            sizeLinks = SQL_Get_Generic_List.ExecuteQuery<CreateSizesSizeLinkItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForSizeLink, null);
 
-            foreach (SizeLinkItem item in sizeLinks)
+            foreach (CreateSizesSizeLinkItem item in sizeLinks)
             {
                 SizeLinksListBox.Items.Add(item.ToString());
             }
@@ -116,9 +82,9 @@ namespace Manny_Tools_Claude
 
             //load SizeLink list from sql connection using selected Product Size
             string queryForSuppliers = $"select AccountNumber, AccountName from Supplier";
-            suppliers = SQL_Get_Generic_List.ExecuteQuery<Supplier>(DatabaseConnectionManager.Instance.ConnectionString, queryForSuppliers, null);
+            suppliers = SQL_Get_Generic_List.ExecuteQuery<CreateSizesSupplierItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForSuppliers, null);
 
-            foreach (Supplier supplier in suppliers)
+            foreach (CreateSizesSupplierItem supplier in suppliers)
             {
                 SupplierComboBox.Items.Add(supplier.ToString());
             }
@@ -134,43 +100,51 @@ namespace Manny_Tools_Claude
             string productCode = ProductParentCode;
             if (productCode != null && productCode != string.Empty)
             {
-                string queryProductCodeParentCode = $"select top 1 ParentCode from ProductInfo where ProductCode = '{productCode}'";
-                int querySingleResultParentCode = SQL_Get_Generic_List.ExecuteSingle<int>(DatabaseConnectionManager.Instance.ConnectionString, queryProductCodeParentCode, null);
-                if (!(querySingleResultParentCode >= 0))
+                try
                 {
-                    MessageBox.Show("Invalid Product/Parent Code for template.");
-                    return;
-                }
+                    string queryProductCodeParentCode = $"select top 1 ParentCode from ProductInfo where ProductCode = '{productCode}'";
+                    int querySingleResultParentCode = SQL_Get_Generic_List.ExecuteSingle<int>(DatabaseConnectionManager.Instance.ConnectionString, queryProductCodeParentCode, null);
+                    if (!(querySingleResultParentCode >= 0))
+                    {
+                        MessageBox.Show("Invalid Product/Parent Code for template.");
+                        return;
+                    }
 
-                int ParentCode = querySingleResultParentCode;
-                string queryProductInfoUsingParentCode = $"select top 1 ParentCode, Description, UnitSize, CostPriceExcl, Markup, ProductSize, SizeLink from ProductInfo where ParentCode = '{ParentCode}' ";
-                ProductInfo productInfo = SQL_Get_Generic_List.ExecuteSingle<ProductInfo>(DatabaseConnectionManager.Instance.ConnectionString, queryProductInfoUsingParentCode, null);
-                if (productInfo == null)
+                    int ParentCode = querySingleResultParentCode;
+                    string queryProductInfoUsingParentCode = $"select top 1 ParentCode, Description, UnitSize, CostPriceExcl, Markup, ProductSize, SizeLink from ProductInfo where ParentCode = '{ParentCode}' ";
+                    ProductInfo productInfo = SQL_Get_Generic_List.ExecuteSingle<ProductInfo>(DatabaseConnectionManager.Instance.ConnectionString, queryProductInfoUsingParentCode, null);
+                    if (productInfo == null)
+                    {
+                        MessageBox.Show("Invalid Product/Parent Code for template.");
+                        return;
+                    }
+
+                    activeTemplate.ParentCode = productInfo.ParentCode;
+                    activeTemplate.Description = productInfo.Description;
+                    activeTemplate.Markup = productInfo.Markup;
+                    activeTemplate.CostPriceExcl = productInfo.CostPriceExcl;
+
+                    activeTemplate.ProductSize = new CreateSizesProductSizeItem();
+                    activeTemplate.ProductSize.Number = productInfo.ProductSize;
+
+                    string querySizeLink = $"select SizeCode, Description from SizeLink where Holder = '{activeTemplate.ProductSize.Number}'";
+                    activeTemplate.SizeLinks = SQL_Get_Generic_List.ExecuteQuery<CreateSizesSizeLinkItem>(DatabaseConnectionManager.Instance.ConnectionString, querySizeLink, null);
+                    
+
+                    string querySupplierProductLinks = $"select top 1 SupplierProductcode from supplierproductlinks where ProductCode = '{ParentCode}'";
+                    string supplierProductCode = SQL_Get_Generic_List.ExecuteSingle<string>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierProductLinks, null);
+                    activeTemplate.SupplierCode = supplierProductCode;
+
+                    string querySupplierNumber = $"select top 1 CreditorNumber from supplierproductlinks where ProductCode = '{ParentCode}'";
+                    string supplierNumber = SQL_Get_Generic_List.ExecuteSingle<string>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierNumber, null);
+                    string querySupplierDetails = $"select top 1 AccountNumber, AccountName from Supplier where AccountNumber = '{supplierNumber}'";
+                    activeTemplate.Supplier = SQL_Get_Generic_List.ExecuteSingle<CreateSizesSupplierItem>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierDetails, null);
+                }
+                catch (Exception ex)
                 {
-                    MessageBox.Show("Invalid Product/Parent Code for template.");
-                    return;
+                    MessageBox.Show("Error loading template: ");
+
                 }
-                activeTemplate = new TemplateItem();
-                activeTemplate.ParentCode = productInfo.ParentCode;
-                activeTemplate.Description = productInfo.Description;
-                activeTemplate.ProductSize = new ProductSizeItem();
-                activeTemplate.ProductSize.Number = productInfo.ProductSize;
-
-                string querySizeLink = $"select SizeCode, Description from SizeLink where Holder = '{activeTemplate.ProductSize.Number}'";
-                activeTemplate.SizeLinks = SQL_Get_Generic_List.ExecuteQuery<SizeLinkItem>(DatabaseConnectionManager.Instance.ConnectionString, querySizeLink, null);
-                activeTemplate.Markup = productInfo.Markup;
-                activeTemplate.CostPriceExcl = productInfo.CostPriceExcl;
-
-                string querySupplierProductLinks = $"select top 1 SupplierProductcode from supplierproductlinks where ProductCode = '{ParentCode}'";
-                string supplierProductCode = SQL_Get_Generic_List.ExecuteSingle<string>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierProductLinks, null);
-                activeTemplate.SupplierCode = supplierProductCode;
-
-                string querySupplierNumber = $"select top 1 CreditorNumber from supplierproductlinks where ProductCode = '{ParentCode}'";
-                string supplierNumber = SQL_Get_Generic_List.ExecuteSingle<string>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierNumber, null);
-                string querySupplierDetails = $"select top 1 AccountNumber, AccountName from Supplier where AccountNumber = '{supplierNumber}'";
-                activeTemplate.Supplier = SQL_Get_Generic_List.ExecuteSingle<Supplier>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierDetails, null);
-
-
             }
 
         }
@@ -225,16 +199,7 @@ namespace Manny_Tools_Claude
             
         }
 
-        private class ProductInfo
-        {
-            public string ParentCode { get; set; }
-            public string Description { get; set; }
-            public float UnitSize { get; set; }
-            public float CostPriceExcl { get; set; }
-            public float Markup { get; set; }
-            public int ProductSize { get; set; }
-            public int SizeLink { get; set; }
-        }
+       
 
         private void SupplierNumberComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {

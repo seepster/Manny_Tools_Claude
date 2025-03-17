@@ -76,34 +76,25 @@ namespace Manny_Tools_Claude
 
         private void SQL_Viewer_Schema_VisibleChanged(object sender, EventArgs e)
         {
-            if (this.Visible && !_isInitialized)
+            if (this.Visible)
             {
-                InitializeData();
-            }
-            else if (this.Visible && ConnectionStatusManager.Instance.IsConnected && lstTables.Items.Count == 0)
-            {
-                // Tab is visible, we're connected, but no tables loaded - try to load
-                InitializeData();
-            }
-        }
+                // If the connection string is empty, try to get it from the manager
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                }
 
-        private void InitializeData()
-        {
-            // Try to get connection if needed
-            if (string.IsNullOrEmpty(_connectionString))
-            {
-                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
-            }
-
-            if (!string.IsNullOrEmpty(_connectionString))
-            {
-                UpdateStatus("Initializing database connection...", Color.DarkBlue);
-                InitializeSchemaMapper();
-                _isInitialized = true; // Set initialization flag to prevent redundant loading
-            }
-            else
-            {
-                UpdateStatus("No database connection configured. Please set up connection settings.", Color.Red);
+                // If we have a connection string and connection is active, load tables
+                if (!string.IsNullOrEmpty(_connectionString) && ConnectionStatusManager.Instance.IsConnected)
+                {
+                    // Reset the initialization flag to force reload
+                    _isInitialized = false;
+                    InitializeData();
+                }
+                else if (!_isInitialized)
+                {
+                    InitializeData();
+                }
             }
         }
 
@@ -169,6 +160,48 @@ namespace Manny_Tools_Claude
         {
             _connectionString = connectionString;
             InitializeSchemaMapper();
+        }
+
+        // New public method to explicitly load tables
+        public void LoadDatabaseTables()
+        {
+            // Make sure we have the latest connection string
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+            }
+
+            // If we still don't have a connection string, try to prompt the user
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                UpdateStatus("No database connection configured. Please set up connection settings.", Color.Red);
+                return;
+            }
+
+            // Make sure connection status is up to date
+            ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+
+            if (ConnectionStatusManager.Instance.IsConnected)
+            {
+                try
+                {
+                    UpdateStatus("Loading database tables...", Color.DarkBlue);
+
+                    // Initialize schema mapper and load tables
+                    _schemaMapper = new SQL_Mapper_Schema(_connectionString);
+                    LoadTableList();
+
+                    _isInitialized = true;
+                }
+                catch (Exception ex)
+                {
+                    UpdateStatus($"Error loading tables: {ex.Message}", Color.Red);
+                }
+            }
+            else
+            {
+                UpdateStatus("Database connection failed. Please check connection settings.", Color.Red);
+            }
         }
 
         private void InitializeComponent()
@@ -391,6 +424,41 @@ namespace Manny_Tools_Claude
         #endregion
 
         #region Data Loading & Display
+
+        private void InitializeData()
+        {
+            // Try to get connection if needed
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+            }
+
+            if (!string.IsNullOrEmpty(_connectionString))
+            {
+                UpdateStatus("Initializing database connection...", Color.DarkBlue);
+
+                // Check connection status
+                if (!ConnectionStatusManager.Instance.IsConnected)
+                {
+                    // Force a connection check
+                    ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+                }
+
+                if (ConnectionStatusManager.Instance.IsConnected)
+                {
+                    InitializeSchemaMapper();
+                    _isInitialized = true; // Set initialization flag to prevent redundant loading
+                }
+                else
+                {
+                    UpdateStatus("Unable to connect to database. Please check connection settings.", Color.Red);
+                }
+            }
+            else
+            {
+                UpdateStatus("No database connection configured. Please set up connection settings.", Color.Red);
+            }
+        }
 
         private void InitializeSchemaMapper()
         {

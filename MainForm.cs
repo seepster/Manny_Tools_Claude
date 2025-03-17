@@ -4,6 +4,8 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Manny_Tools_Claude
@@ -119,6 +121,21 @@ namespace Manny_Tools_Claude
             {
                 ConnectionStatusManager.Instance.CheckConnection(_connectionString);
                 ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
+
+                // Force SQL Viewer to initialize immediately if the tab exists and user has permission
+                if (tabControl.TabPages.Contains(tabViewSQL) && sqlViewer != null)
+                {
+                    // Add a short delay to allow UI to initialize before loading tables
+                    Task.Run(() => {
+                        Thread.Sleep(500); // Short delay to allow UI to initialize
+                        this.Invoke(new Action(() => {
+                            // Make sure we have the latest connection string
+                            sqlViewer.UpdateConnectionString(_connectionString);
+                            // Explicitly load database tables
+                            sqlViewer.LoadDatabaseTables();
+                        }));
+                    });
+                }
             }
         }
 
@@ -262,6 +279,9 @@ namespace Manny_Tools_Claude
             // Force the SQL viewer to initialize if this is the selected tab
             if (tabControl.SelectedTab == tabViewSQL)
             {
+                // First ensure that connection status is up to date
+                ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+
                 // Send a fake visibility changed event by toggling visibility
                 sqlViewer.Visible = false;
                 sqlViewer.Visible = true;

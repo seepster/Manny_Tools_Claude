@@ -65,11 +65,22 @@ namespace Manny_Tools_Claude
             // Position the buttons initially
             PositionHeaderButtons();
 
+            //Initialize sql viewer form
+            InitializeSQLViewer();
+
+            // Initialize Create Sizes form
+            InitializeCreateSizes();
+
+            // Initialize Stock On Hand form
+            InitializeStockOnHand();
+
+            // Initialize Orbit Sizing Method form
+            InitializeOrbitSizing();
+
             // Check connection status
             if (!string.IsNullOrEmpty(_connectionString))
             {
                 ConnectionStatusManager.Instance.CheckConnection(_connectionString);
-                ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
 
                 // Force SQL Viewer to initialize immediately if the tab exists and user has permission
                 if (tabControl.TabPages.Contains(tabViewSQL) && sqlViewer != null)
@@ -288,7 +299,6 @@ namespace Manny_Tools_Claude
                     }
 
                     ConnectionStatusManager.Instance.CheckConnection(_connectionString);
-                    ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
                     return true;
                 }
             }

@@ -9,16 +9,6 @@ namespace Manny_Tools_Claude
 {
     public partial class LoginForm : Form
     {
-        // Form controls
-        private Label lblTitle;
-        private Label lblUsername;
-        private TextBox txtUsername;
-        private Label lblPassword;
-        private TextBox txtPassword;
-        private Button btnLogin;
-        private Button btnCancel;
-        private Button btnUserManagement;
-
         // User authentication result
         public UserType AuthenticatedUserType { get; private set; }
         public string AuthenticatedUsername { get; private set; }
@@ -38,95 +28,6 @@ namespace Manny_Tools_Claude
 
             // Create default users if they don't exist
             CreateDefaultUsers();
-        }
-
-        private void InitializeComponent()
-        {
-            this.Text = "Manny Tools - Login";
-            this.Size = new Size(400, 380);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-
-            // Create title
-            lblTitle = new Label
-            {
-                Text = "Manny Tools Login",
-                Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Location = new Point(20, 20),
-                Size = new Size(350, 40)
-            };
-
-            // Username field
-            lblUsername = new Label
-            {
-                Text = "Username:",
-                Location = new Point(50, 80),
-                Size = new Size(100, 23)
-            };
-
-            txtUsername = new TextBox
-            {
-                Location = new Point(160, 80),
-                Size = new Size(180, 23)
-            };
-
-            // Password field
-            lblPassword = new Label
-            {
-                Text = "Password:",
-                Location = new Point(50, 120),
-                Size = new Size(100, 23)
-            };
-
-            txtPassword = new TextBox
-            {
-                Location = new Point(160, 120),
-                Size = new Size(180, 23),
-                PasswordChar = '*'
-            };
-
-            // Buttons
-            btnLogin = new Button
-            {
-                Text = "Login",
-                Location = new Point(160, 170),
-                Size = new Size(100, 30)
-            };
-            btnLogin.Click += BtnLogin_Click;
-
-            btnCancel = new Button
-            {
-                Text = "Cancel",
-                Location = new Point(270, 170),
-                Size = new Size(80, 30)
-            };
-            btnCancel.Click += BtnCancel_Click;
-
-            // User Management button (Replace the old separate buttons)
-            btnUserManagement = new Button
-            {
-                Text = "User Management",
-                Location = new Point(50, 240),
-                Size = new Size(300, 30)
-            };
-            btnUserManagement.Click += BtnUserManagement_Click;
-
-            // Add controls to the form
-            this.Controls.Add(lblTitle);
-            this.Controls.Add(lblUsername);
-            this.Controls.Add(txtUsername);
-            this.Controls.Add(lblPassword);
-            this.Controls.Add(txtPassword);
-            this.Controls.Add(btnLogin);
-            this.Controls.Add(btnCancel);
-            this.Controls.Add(btnUserManagement);
-
-            // Set the accept and cancel buttons
-            this.AcceptButton = btnLogin;
-            this.CancelButton = btnCancel;
         }
 
         private void BtnLogin_Click(object sender, EventArgs e)

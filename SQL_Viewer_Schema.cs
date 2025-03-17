@@ -17,22 +17,6 @@ namespace Manny_Tools_Claude
         private SQL_Mapper_Schema _schemaMapper;
         private bool _isInitialized = false;
 
-        // Form controls
-        private Label lblTitle;
-        private Label lblInstructions;
-        private Label lblTableList;
-        private ListBox lstTables;
-        private Label lblTableFields;
-        private DataGridView dgvFields;
-        private Label lblTableData;
-        private DataGridView dgvTableData;
-        private Button btnRefresh;
-        private Panel panelHeader;
-        private Panel panelLeft;
-        private Panel panelRight;
-        private SplitContainer splitContainer;
-        private Label lblStatus;
-
         #endregion
 
         #region Constructor & Initialization
@@ -56,7 +40,7 @@ namespace Manny_Tools_Claude
             if (!string.IsNullOrEmpty(_connectionString) ||
                 !string.IsNullOrEmpty(DatabaseConnectionManager.Instance.ConnectionString))
             {
-                // Use timer to allow UI to render first
+                // Use timer to allow UI to render first  
                 Timer initTimer = new Timer();
                 initTimer.Interval = 100; // Short delay
                 initTimer.Tick += (s, e) => {
@@ -198,226 +182,9 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private void InitializeComponent()
-        {
-            // Create main container with white background
-            this.BackColor = SystemColors.Control;
-
-            // Create header panel
-            panelHeader = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 60,
-                BackColor = Color.FromArgb(240, 240, 240)
-            };
-
-            // Create title and instructions
-            lblTitle = new Label
-            {
-                Text = "Database Schema Viewer",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                Location = new Point(10, 10),
-                AutoSize = true
-            };
-
-            lblInstructions = new Label
-            {
-                Text = "Select a table from the list to view its structure and data.",
-                Location = new Point(10, 35),
-                Size = new Size(850, 20),
-                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
-            };
-
-            // Add refresh button
-            btnRefresh = new Button
-            {
-                Text = "Refresh Tables",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(950, 15),
-                Size = new Size(100, 30)
-            };
-
-            // Add status label
-            lblStatus = new Label
-            {
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                TextAlign = ContentAlignment.MiddleRight,
-                Location = new Point(600, 35),
-                Size = new Size(350, 20),
-                ForeColor = Color.DarkBlue
-            };
-
-            // Add controls to header panel
-            panelHeader.Controls.Add(lblTitle);
-            panelHeader.Controls.Add(lblInstructions);
-            panelHeader.Controls.Add(btnRefresh);
-            panelHeader.Controls.Add(lblStatus);
-
-            // Content container to hold both the left panel and right content
-            Panel contentContainer = new Panel
-            {
-                Dock = DockStyle.Fill
-            };
-
-            // Create split container for main content
-            splitContainer = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 300,
-                Panel1MinSize = 100,
-                Panel2MinSize = 100
-            };
-
-            // Create left panel for table list
-            panelLeft = new Panel
-            {
-                Dock = DockStyle.Left,
-                Width = 250,
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-
-            lblTableList = new Label
-            {
-                Text = "Database Tables",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Dock = DockStyle.Top,
-                Padding = new Padding(10, 10, 10, 5),
-                Height = 30
-            };
-
-            lstTables = new ListBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(10, 0, 10, 10),
-                BorderStyle = BorderStyle.FixedSingle
-            };
-
-            panelLeft.Controls.Add(lstTables);
-            panelLeft.Controls.Add(lblTableList);
-
-            // Create right panel for table details
-            panelRight = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10)
-            };
-
-            // Table Fields Section
-            lblTableFields = new Label
-            {
-                Text = "Table Fields",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Dock = DockStyle.Top,
-                Padding = new Padding(0, 0, 0, 5)
-            };
-
-            dgvFields = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                RowHeadersVisible = false,
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.AliceBlue }
-            };
-
-            Panel panel1Container = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(0, 25, 0, 0)
-            };
-
-            panel1Container.Controls.Add(dgvFields);
-            splitContainer.Panel1.Controls.Add(panel1Container);
-            splitContainer.Panel1.Controls.Add(lblTableFields);
-
-            // Table Data Section
-            lblTableData = new Label
-            {
-                Text = "Table Data (Last 10 Records)",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Dock = DockStyle.Top,
-                Padding = new Padding(0, 0, 0, 5)
-            };
-
-            dgvTableData = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                RowHeadersVisible = false,
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.AliceBlue },
-                AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
-                AllowUserToResizeColumns = true,
-                AllowUserToResizeRows = false,
-                ScrollBars = ScrollBars.Both
-            };
-
-            Panel panel2Container = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(0, 25, 0, 0)
-            };
-
-            panel2Container.Controls.Add(dgvTableData);
-            splitContainer.Panel2.Controls.Add(panel2Container);
-            splitContainer.Panel2.Controls.Add(lblTableData);
-
-            // Add panels to the form
-            panelRight.Controls.Add(splitContainer);
-            contentContainer.Controls.Add(panelRight);
-            contentContainer.Controls.Add(panelLeft);
-
-            this.Controls.Add(contentContainer);
-            this.Controls.Add(panelHeader);
-
-            // Wire up events
-            lstTables.SelectedIndexChanged += LstTables_SelectedIndexChanged;
-            btnRefresh.Click += BtnRefresh_Click;
-        }
-
-        private void ConfigureTableDataGrid()
-        {
-            // Add a handler for DataBindingComplete to adjust column widths after data binding
-            dgvTableData.DataBindingComplete += (sender, e) =>
-            {
-                if (e.ListChangedType != ListChangedType.ItemDeleted)
-                {
-                    // First auto-size columns based on header and content
-                    dgvTableData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
-
-                    // Apply formatting to monetary columns
-                    FormatDataGridViewColumns(dgvTableData);
-
-                    // Ensure there's at least one scrollable column
-                    bool hasScrollableColumn = false;
-
-                    foreach (DataGridViewColumn col in dgvTableData.Columns)
-                    {
-                        // If any column width is greater than 300, limit it and ensure scrollbars
-                        if (col.Width > 300)
-                        {
-                            col.Width = 300;
-                            hasScrollableColumn = true;
-                        }
-                    }
-
-                    // If no column needed scrolling, make the last column fill available space
-                    if (!hasScrollableColumn && dgvTableData.Columns.Count > 0)
-                    {
-                        dgvTableData.Columns[dgvTableData.Columns.Count - 1].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                    }
-                }
-            };
-        }
-
         #endregion
 
-        #region Data Loading & Display
+        #region Data Loading & Display  
 
         private void InitializeData()
         {
@@ -511,7 +278,7 @@ namespace Manny_Tools_Claude
                 lblTableFields.Text = "Table Fields";
                 lblTableData.Text = "Table Data (Latest 10 Records)";
 
-                // Auto select the first table if available
+                // Auto select the first table if available  
                 if (lstTables.Items.Count > 0)
                 {
                     lstTables.SelectedIndex = 0;
@@ -581,7 +348,7 @@ namespace Manny_Tools_Claude
                 UpdateStatus($"Loading details for table: {tableName}...", Color.DarkBlue);
                 Cursor.Current = Cursors.WaitCursor;
 
-                // Update labels
+                // Update labels 
                 lblTableFields.Text = $"Table Fields: {tableName}";
                 lblTableData.Text = $"Table Data: {tableName} (Latest 10 Records)";
 
@@ -589,7 +356,7 @@ namespace Manny_Tools_Claude
                 string columnsQuery = @"
                     SELECT 
                         c.name AS ColumnName,
-                        TYPE_NAME(c.user_type_id) AS DataType,
+                        TYPE_NAME(c.user_type_id) AS DataType,  
                         c.max_length AS MaxLength,
                         c.is_nullable AS IsNullable,
                         CASE WHEN pk.column_id IS NOT NULL THEN 'Yes' ELSE 'No' END AS IsPrimaryKey,
@@ -642,7 +409,7 @@ namespace Manny_Tools_Claude
                 DataTable sampleData = GetTableData(tableName, dataQuery);
                 dgvTableData.DataSource = sampleData;
 
-                // Apply formatting to monetary columns
+                // Apply formatting to monetary columns  
                 FormatDataGridViewColumns(dgvTableData);
 
                 UpdateStatus($"Loaded table details for: {tableName}", Color.Green);
@@ -685,7 +452,7 @@ namespace Manny_Tools_Claude
                 string pkQuery = @"
                     SELECT TOP 1 c.name
                     FROM sys.columns c
-                    INNER JOIN sys.index_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                    INNER JOIN sys.index_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id  
                     INNER JOIN sys.indexes i ON i.object_id = ic.object_id AND i.index_id = ic.index_id
                     WHERE 
                         c.object_id = OBJECT_ID(@TableName)
@@ -693,10 +460,10 @@ namespace Manny_Tools_Claude
                     ORDER BY ic.key_ordinal";
 
                 string pkColumn = SQL_Get_Generic_List.ExecuteScalar<string>(
-                    _connectionString,
-                    pkQuery,
-                    new { TableName = tableName }
-                );
+                                _connectionString,
+                                pkQuery,
+                                new { TableName = tableName }
+                                );
 
                 return pkColumn;
             }
@@ -750,11 +517,46 @@ namespace Manny_Tools_Claude
 
         #region Monetary Column Formatting
 
-        /// <summary>
+        private void ConfigureTableDataGrid()
+        {
+            // Add a handler for DataBindingComplete to adjust column widths after data binding
+            dgvTableData.DataBindingComplete += (sender, e) =>
+            {
+                if (e.ListChangedType != ListChangedType.ItemDeleted)
+                {
+                    // First auto-size columns based on header and content
+                    dgvTableData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
+
+                    // Apply formatting to monetary columns
+                    FormatDataGridViewColumns(dgvTableData);
+
+                    // Ensure there's at least one scrollable column
+                    bool hasScrollableColumn = false;
+
+                    foreach (DataGridViewColumn col in dgvTableData.Columns)
+                    {
+                        // If any column width is greater than 300, limit it and ensure scrollbars  
+                        if (col.Width > 300)
+                        {
+                            col.Width = 300;
+                            hasScrollableColumn = true;
+                        }
+                    }
+
+                    // If no column needed scrolling, make the last column fill available space
+                    if (!hasScrollableColumn && dgvTableData.Columns.Count > 0)
+                    {
+                        dgvTableData.Columns[dgvTableData.Columns.Count - 1].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                    }
+                }
+            };
+        }
+
+        /// &lt;summary&gt;
         /// Determines if a column is likely to contain monetary values based on its name
-        /// </summary>
-        /// <param name="columnName">The name of the column to check</param>
-        /// <returns>True if the column likely contains monetary values</returns>
+        /// &lt;/summary&gt;
+        /// &lt;param name="columnName"&gt;The name of the column to check&lt;/param&gt;
+        /// &lt;returns&gt;True if the column likely contains monetary values&lt;/returns&gt;
         private bool IsMonetaryColumn(string columnName)
         {
             if (string.IsNullOrEmpty(columnName))
@@ -788,7 +590,7 @@ namespace Manny_Tools_Claude
                     return true;
             }
 
-            // Check for column names that start with common monetary prefixes
+            // Check for column names that start with common monetary prefixes 
             string[] monetaryPrefixes = new[] { "$", "amt_", "amount_", "price_" };
             foreach (string prefix in monetaryPrefixes)
             {
@@ -807,10 +609,10 @@ namespace Manny_Tools_Claude
             return false;
         }
 
-        /// <summary>
+        /// &lt;summary&gt;
         /// Formats the DataGridView columns based on their content type
-        /// </summary>
-        /// <param name="gridView">The DataGridView to format</param>
+        /// &lt;/summary&gt;
+        /// &lt;param name="gridView"&gt;The DataGridView to format&lt;/param&gt;
         private void FormatDataGridViewColumns(DataGridView gridView)
         {
             if (gridView == null || gridView.Columns.Count == 0)
@@ -824,7 +626,7 @@ namespace Manny_Tools_Claude
                     // Right-align header
                     column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
 
-                    // Right-align cells and format as currency if it's a numeric type
+                    // Right-align cells and format as currency if it's a numeric type  
                     column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
                     // Set currency format if the column type is appropriate

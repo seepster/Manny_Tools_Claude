@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Manny_Tools_Claude
 {
@@ -20,6 +22,12 @@ namespace Manny_Tools_Claude
         // Singleton instance
         private static ConnectionStatusManager _instance;
         private static readonly object _lock = new object();
+
+        // Shorter timeout for connection checks (3 seconds)
+        private const int CONNECTION_CHECK_TIMEOUT = 10000;
+
+        // Flag to track if a check is in progress
+        private bool _checkInProgress = false;
 
         public static ConnectionStatusManager Instance
         {
@@ -48,36 +56,68 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Checks the database connection status 
+        /// Checks the database connection status with timeout protection
         /// </summary>
         /// <param name="connectionString">The connection string to test</param>
         public void CheckConnection(string connectionString)
         {
+            // Skip if we're already checking a connection
+            if (_checkInProgress)
+                return;
+
             if (string.IsNullOrEmpty(connectionString))
             {
                 UpdateConnectionStatus(false, "No connection string configured");
                 return;
             }
 
-            try
+            // Set the flag to avoid concurrent checks
+            _checkInProgress = true;
+
+            // Run connection check in background
+            Task.Run(() =>
             {
-                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                try
                 {
-                    try
+                    using (var cts = new CancellationTokenSource(CONNECTION_CHECK_TIMEOUT))
                     {
-                        connection.Open();
-                        UpdateConnectionStatus(true, string.Empty);
-                    }
-                    catch (Exception ex)
-                    {
-                        UpdateConnectionStatus(false, ex.Message);
+                        try
+                        {
+                            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                            {
+                                try
+                                {
+                                    // Try to open with cancelation token
+                                    connection.Open();
+                                    UpdateConnectionStatus(true, string.Empty);
+                                }
+                                catch (Exception ex)
+                                {
+                                    UpdateConnectionStatus(false, ex.Message);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            UpdateConnectionStatus(false, ex.Message);
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                UpdateConnectionStatus(false, ex.Message);
-            }
+                catch (TaskCanceledException)
+                {
+                    // Connection timed out
+                    UpdateConnectionStatus(false, "Connection timed out");
+                }
+                catch (Exception ex)
+                {
+                    UpdateConnectionStatus(false, ex.Message);
+                }
+                finally
+                {
+                    // Clear the flag when done
+                    _checkInProgress = false;
+                }
+            });
         }
 
         /// <summary>

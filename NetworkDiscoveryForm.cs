@@ -95,7 +95,7 @@ namespace Manny_Tools_Claude
             // Update nodes found count
             lblNodesFound.Text = $"Nodes Found: {_networkDiscovery.DiscoveredNodes.Count}";
 
-            // If a new node was discovered with SQL instances, add it to the tree view
+            // If a new node was discovered, add it to the tree view
             if (e.CurrentNode != null && e.CurrentNode.IsResponding)
             {
                 // Check if the node is already in the tree
@@ -104,11 +104,8 @@ namespace Manny_Tools_Claude
 
                 if (existingNodes.Length == 0)
                 {
-                    // Only add nodes with SQL instances to the tree
-                    if (e.CurrentNode.SqlInstances.Count > 0)
-                    {
-                        AddNodeToTreeView(e.CurrentNode);
-                    }
+                    // Add node to tree regardless of whether it has SQL instances
+                    AddNodeToTreeView(e.CurrentNode);
                 }
                 else
                 {
@@ -141,17 +138,22 @@ namespace Manny_Tools_Claude
             progressBar.Value = progressBar.Maximum;
 
             // Update status
-            lblStatus.Text = e.CompletionMessage;
-            toolStripStatusLabel.Text = e.CompletionMessage;
+            int nodesWithSql = e.DiscoveredNodes.Count(n => n.SqlInstances.Count > 0);
+            string completionMessage = $"{e.CompletionMessage} Found {nodesWithSql} nodes with SQL instances.";
+
+            lblStatus.Text = completionMessage;
+            toolStripStatusLabel.Text = completionMessage;
 
             // Update nodes found count
             lblNodesFound.Text = $"Nodes Found: {e.DiscoveredNodes.Count}";
 
-            // Populate tree with all discovered nodes that have SQL instances
+            // Populate tree with all discovered nodes
             if (e.IsSuccessful)
             {
                 treeViewNetwork.Nodes.Clear();
-                PopulateTreeView(e.DiscoveredNodes.Where(n => n.SqlInstances.Count > 0).ToList());
+
+                // Include all responding nodes, not just those with SQL instances
+                PopulateTreeView(e.DiscoveredNodes.Where(n => n.IsResponding).ToList());
             }
         }
 
@@ -334,8 +336,8 @@ namespace Manny_Tools_Claude
             if (nodes.Count == 0)
             {
                 // No nodes to display
-                lblStatus.Text = "No SQL Server instances were found on the network.";
-                toolStripStatusLabel.Text = "No SQL Server instances were found on the network.";
+                lblStatus.Text = "No responding hosts were found on the network.";
+                toolStripStatusLabel.Text = "No responding hosts were found on the network.";
                 return;
             }
 
@@ -369,10 +371,6 @@ namespace Manny_Tools_Claude
         /// </summary>
         private void AddNodeToTreeView(NetworkNode node)
         {
-            // Skip nodes without SQL instances
-            if (node.SqlInstances.Count == 0)
-                return;
-
             // Create a new tree node
             string nodeKey = $"Node_{node.IPAddress}";
             string nodeType = node.IsLocalMachine ? NODE_TYPE_LOCAL : NODE_TYPE_REMOTE;
@@ -391,10 +389,20 @@ namespace Manny_Tools_Claude
                 treeNode.NodeFont = new Font(treeViewNetwork.Font, FontStyle.Bold);
             }
 
-            // Add SQL instances as child nodes
+            // Add SQL instances as child nodes (if any)
             foreach (var instance in node.SqlInstances)
             {
                 AddSqlInstanceToTreeNode(treeNode, instance);
+            }
+
+            // If node has SQL instances, use blue to highlight it
+            if (node.SqlInstances.Count > 0)
+            {
+                treeNode.ForeColor = Color.Blue;
+                if (!node.IsLocalMachine) // Don't override local machine styling
+                {
+                    treeNode.NodeFont = new Font(treeViewNetwork.Font, FontStyle.Bold);
+                }
             }
 
             // Add the node to the tree
@@ -415,6 +423,13 @@ namespace Manny_Tools_Claude
                 foreach (var instance in node.SqlInstances)
                 {
                     AddSqlInstanceToTreeNode(treeNode, instance);
+                }
+
+                // Update node appearance based on SQL instances
+                if (node.SqlInstances.Count > 0 && !node.IsLocalMachine)
+                {
+                    treeNode.ForeColor = Color.Blue;
+                    treeNode.NodeFont = new Font(treeViewNetwork.Font, FontStyle.Bold);
                 }
             }
         }
@@ -502,7 +517,7 @@ namespace Manny_Tools_Claude
 
             // Enable panel
             panelNodeDetails.Enabled = true;
-            btnTestConnection.Enabled = false;
+            btnTestConnection.Enabled = dgvSqlInstances.SelectedRows.Count > 0;
             btnUseConnection.Enabled = false;
         }
 

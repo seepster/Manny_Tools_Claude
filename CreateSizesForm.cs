@@ -41,10 +41,12 @@ namespace Manny_Tools_Claude
 
         public void LoadProductSizes()
         {
+            ProductSizeComboBox.Items.Clear();
             //load Product Size dropdown from sql connection
             string queryForProductSize = "select Number, Description from ProductSize";
             try
             {
+                DatabaseConnectionManager.Instance.LoadConnectionString();
                 productSizes = SQL_Get_Generic_List.ExecuteQuery<CreateSizesProductSizeItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForProductSize, null);
 
                 foreach (CreateSizesProductSizeItem item in productSizes)
@@ -80,7 +82,7 @@ namespace Manny_Tools_Claude
         {
             SupplierComboBox.Items.Clear();
 
-            //load SizeLink list from sql connection using selected Product Size
+            //load suppliers list from sql connection 
             string queryForSuppliers = $"select AccountNumber, AccountName from Supplier";
             suppliers = SQL_Get_Generic_List.ExecuteQuery<CreateSizesSupplierItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForSuppliers, null);
 
@@ -151,7 +153,6 @@ namespace Manny_Tools_Claude
 
         private void ProductSizeComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            LoadProductSizes();
             LoadSizeLinks();
         }
 

@@ -50,7 +50,7 @@
             lblTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
             lblTitle.Location = new Point(20, 20);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(319, 30);
+            lblTitle.Size = new Size(307, 30);
             lblTitle.TabIndex = 1;
             lblTitle.Text = "SQL Server Connection Settings";
             // 
@@ -166,12 +166,12 @@
             // 
             // btnDiscover
             // 
-            this.btnDiscover = new System.Windows.Forms.Button();
-            this.btnDiscover.Text = "Discover Servers";
-            this.btnDiscover.Location = new System.Drawing.Point(300, 70);
-            this.btnDiscover.Size = new System.Drawing.Size(120, 30);
-            this.btnDiscover.Name = "btnDiscover";
-            this.btnDiscover.UseVisualStyleBackColor = true;
+            btnDiscover.Location = new Point(359, 20);
+            btnDiscover.Name = "btnDiscover";
+            btnDiscover.Size = new Size(120, 30);
+            btnDiscover.TabIndex = 15;
+            btnDiscover.Text = "Discover Servers";
+            btnDiscover.UseVisualStyleBackColor = true;
             // 
             // SQL_Connection_Settings
             // 

@@ -6,15 +6,11 @@ using System.Text;
 namespace Manny_Tools_Claude
 {
     /// <summary>
-    /// Helper class for encrypting and decrypting configuration data
+    /// Helper class for hashing configuration data
     /// </summary>
     public static class DataEncryptionHelper
     {
-        // The encryption key - in a real application, this would be stored more securely
-        // and potentially unique per installation
-        private static readonly string EncryptionKey = "M@nnyT00ls_S3cur1tyK3y_2025";
-
-        // Files and their obfuscated names
+        // Files and their names
         public static class ConfigFiles
         {
             public static readonly string UsersFile = "system_metrics.dat";
@@ -24,123 +20,68 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Encrypts a string using AES encryption
+        /// Computes a hash for a string using SHA256
         /// </summary>
-        public static string Encrypt(string plainText)
+        public static string HashString(string plainText)
         {
             if (string.IsNullOrEmpty(plainText))
                 return plainText;
 
             try
             {
-                byte[] iv = new byte[16];
-                byte[] array;
-
-                using (Aes aes = Aes.Create())
+                using (SHA256 sha256 = SHA256.Create())
                 {
-                    aes.Key = Encoding.UTF8.GetBytes(EncryptionKey);
-                    aes.IV = iv;
+                    byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(plainText));
 
-                    ICryptoTransform encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-
-                    using (MemoryStream memoryStream = new MemoryStream())
+                    StringBuilder builder = new StringBuilder();
+                    for (int i = 0; i < hashBytes.Length; i++)
                     {
-                        using (CryptoStream cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
-                        {
-                            using (StreamWriter streamWriter = new StreamWriter(cryptoStream))
-                            {
-                                streamWriter.Write(plainText);
-                            }
-
-                            array = memoryStream.ToArray();
-                        }
+                        builder.Append(hashBytes[i].ToString("x2"));
                     }
+                    return builder.ToString();
                 }
-
-                return Convert.ToBase64String(array);
             }
             catch (Exception)
             {
-                // If encryption fails, return the plain text to avoid data loss
+                // If hashing fails, return the plain text to avoid data loss
                 return plainText;
             }
         }
 
         /// <summary>
-        /// Decrypts an encrypted string
+        /// Writes content to a file (no encryption)
         /// </summary>
-        public static string Decrypt(string cipherText)
+        public static void WriteFile(string filePath, string content)
         {
-            if (string.IsNullOrEmpty(cipherText))
-                return cipherText;
-
-            try
-            {
-                byte[] iv = new byte[16];
-                byte[] buffer = Convert.FromBase64String(cipherText);
-
-                using (Aes aes = Aes.Create())
-                {
-                    aes.Key = Encoding.UTF8.GetBytes(EncryptionKey);
-                    aes.IV = iv;
-                    ICryptoTransform decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-
-                    using (MemoryStream memoryStream = new MemoryStream(buffer))
-                    {
-                        using (CryptoStream cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
-                        {
-                            using (StreamReader streamReader = new StreamReader(cryptoStream))
-                            {
-                                return streamReader.ReadToEnd();
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // If decryption fails, return the input to avoid data loss
-                // This might happen if the string was not encrypted in the first place
-                return cipherText;
-            }
+            File.WriteAllText(filePath, content);
         }
 
         /// <summary>
-        /// Writes encrypted content to a file
+        /// Reads content from a file (no decryption)
         /// </summary>
-        public static void WriteEncryptedFile(string filePath, string content)
-        {
-            string encryptedContent = Encrypt(content);
-            File.WriteAllText(filePath, encryptedContent);
-        }
-
-        /// <summary>
-        /// Reads encrypted content from a file and decrypts it
-        /// </summary>
-        public static string ReadEncryptedFile(string filePath)
+        public static string ReadFile(string filePath)
         {
             if (!File.Exists(filePath))
                 return null;
 
-            string encryptedContent = File.ReadAllText(filePath);
-            return Decrypt(encryptedContent);
+            return File.ReadAllText(filePath);
         }
 
         /// <summary>
-        /// Writes encrypted lines to a file
+        /// Writes lines to a file (no encryption)
         /// </summary>
-        public static void WriteEncryptedLines(string filePath, string[] lines)
+        public static void WriteLines(string filePath, string[] lines)
         {
             string content = string.Join(Environment.NewLine, lines);
-            WriteEncryptedFile(filePath, content);
+            WriteFile(filePath, content);
         }
 
         /// <summary>
-        /// Reads encrypted lines from a file
+        /// Reads lines from a file (no decryption)
         /// </summary>
-        public static string[] ReadEncryptedLines(string filePath)
+        public static string[] ReadLines(string filePath)
         {
-            string content = ReadEncryptedFile(filePath);
+            string content = ReadFile(filePath);
             if (content == null)
                 return null;
 

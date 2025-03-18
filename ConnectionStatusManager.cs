@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
@@ -21,12 +20,25 @@ namespace Manny_Tools_Claude
 
         // Singleton instance
         private static ConnectionStatusManager _instance;
+        private static readonly object _lock = new object();
+
+        // Flag to track if a check is in progress
+        private bool _checkInProgress = false;
+
         public static ConnectionStatusManager Instance
         {
             get
             {
                 if (_instance == null)
-                    _instance = new ConnectionStatusManager();
+                {
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new ConnectionStatusManager();
+                        }
+                    }
+                }
                 return _instance;
             }
         }
@@ -40,54 +52,47 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Asynchronously checks the database connection status
-        /// </summary>
-        /// <param name="connectionString">The connection string to test</param>
-        public async Task CheckConnectionAsync(string connectionString)
-        {
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                UpdateConnectionStatus(false, "No connection string configured");
-                return;
-            }
-
-            try
-            {
-                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
-                {
-                    await connection.OpenAsync();
-                    UpdateConnectionStatus(true, string.Empty);
-                }
-            }
-            catch (Exception ex)
-            {
-                UpdateConnectionStatus(false, ex.Message);
-            }
-        }
-
-        /// <summary>
-        /// Synchronously checks the database connection status
+        /// Checks the database connection status
         /// </summary>
         /// <param name="connectionString">The connection string to test</param>
         public void CheckConnection(string connectionString)
         {
+            // Skip if we're already checking a connection
+            if (_checkInProgress)
+                return;
+
             if (string.IsNullOrEmpty(connectionString))
             {
                 UpdateConnectionStatus(false, "No connection string configured");
                 return;
             }
 
+            // Set the flag to avoid concurrent checks
+            _checkInProgress = true;
+
             try
             {
-                using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
                 {
-                    connection.Open();
-                    UpdateConnectionStatus(true, string.Empty);
+                    try
+                    {
+                        connection.Open();
+                        UpdateConnectionStatus(true, string.Empty);
+                    }
+                    catch (Exception ex)
+                    {
+                        UpdateConnectionStatus(false, ex.Message);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 UpdateConnectionStatus(false, ex.Message);
+            }
+            finally
+            {
+                // Clear the flag when done
+                _checkInProgress = false;
             }
         }
 

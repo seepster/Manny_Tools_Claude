@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Drawing;
-using System.IO;
 using System.Collections.Generic;
 using System.Data;
-using Manny_Tools_Claude;
 using System.ComponentModel;
+using Microsoft.Data.SqlClient;
+using Timer = System.Windows.Forms.Timer;
 
 namespace Manny_Tools_Claude
 {
@@ -15,21 +15,7 @@ namespace Manny_Tools_Claude
 
         private string _connectionString;
         private SQL_Mapper_Schema _schemaMapper;
-
-        // Form controls
-        private Label lblTitle;
-        private Label lblInstructions;
-        private Label lblTableList;
-        private ListBox lstTables;
-        private Label lblTableFields;
-        private DataGridView dgvFields;
-        private Label lblTableData;
-        private DataGridView dgvTableData;
-        private Button btnRefresh;
-        private Panel panelHeader;
-        private Panel panelLeft;
-        private Panel panelRight;
-        private SplitContainer splitContainer;
+        private bool _isInitialized = false;
 
         #endregion
 
@@ -43,15 +29,51 @@ namespace Manny_Tools_Claude
             // Configure the table data grid
             ConfigureTableDataGrid();
 
-            // Check if we have a connection string
-            if (!string.IsNullOrEmpty(_connectionString))
-            {
-                InitializeSchemaMapper();
-            }
-
             // Subscribe to connection changes
             DatabaseConnectionManager.Instance.ConnectionChanged += DatabaseConnection_Changed;
             ConnectionStatusManager.Instance.ConnectionStatusChanged += ConnectionStatus_Changed;
+
+            // Subscribe to visibility changes to load data when tab becomes visible
+            this.VisibleChanged += SQL_Viewer_Schema_VisibleChanged;
+
+            // Attempt immediate initialization if connection is available
+            if (!string.IsNullOrEmpty(_connectionString) ||
+                !string.IsNullOrEmpty(DatabaseConnectionManager.Instance.ConnectionString))
+            {
+                // Use timer to allow UI to render first  
+                Timer initTimer = new Timer();
+                initTimer.Interval = 100; // Short delay
+                initTimer.Tick += (s, e) => {
+                    initTimer.Stop();
+                    initTimer.Dispose();
+                    InitializeData();
+                };
+                initTimer.Start();
+            }
+        }
+
+        private void SQL_Viewer_Schema_VisibleChanged(object sender, EventArgs e)
+        {
+            if (this.Visible)
+            {
+                // If the connection string is empty, try to get it from the manager
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                }
+
+                // If we have a connection string and connection is active, load tables
+                if (!string.IsNullOrEmpty(_connectionString) && ConnectionStatusManager.Instance.IsConnected)
+                {
+                    // Reset the initialization flag to force reload
+                    _isInitialized = false;
+                    InitializeData();
+                }
+                else if (!_isInitialized)
+                {
+                    InitializeData();
+                }
+            }
         }
 
         private void ConnectionStatus_Changed(object sender, ConnectionStatusEventArgs e)
@@ -84,12 +106,15 @@ namespace Manny_Tools_Claude
 
         private void CheckAndLoadTables()
         {
-            if (ConnectionStatusManager.Instance.IsConnected &&
-                string.IsNullOrEmpty(_connectionString))
+            if (ConnectionStatusManager.Instance.IsConnected)
             {
-                // Try to get the connection string from the manager
-                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
-                if (!string.IsNullOrEmpty(_connectionString))
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    // Try to get the connection string from the manager
+                    _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                }
+
+                if (!string.IsNullOrEmpty(_connectionString) && (lstTables.Items.Count == 0 || !_isInitialized))
                 {
                     InitializeSchemaMapper();
                 }
@@ -103,6 +128,7 @@ namespace Manny_Tools_Claude
                 // Unsubscribe from events
                 DatabaseConnectionManager.Instance.ConnectionChanged -= DatabaseConnection_Changed;
                 ConnectionStatusManager.Instance.ConnectionStatusChanged -= ConnectionStatus_Changed;
+                this.VisibleChanged -= SQL_Viewer_Schema_VisibleChanged;
             }
 
             base.Dispose(disposing);
@@ -114,233 +140,86 @@ namespace Manny_Tools_Claude
             InitializeSchemaMapper();
         }
 
-        private void InitializeComponent()
+        // Explicitly load tables
+        public void LoadDatabaseTables()
         {
-            // Create main container with white background
-            this.BackColor = SystemColors.Control;
-
-            // Create header panel
-            panelHeader = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 60,
-                BackColor = Color.FromArgb(240, 240, 240)
-            };
-
-            // Create title and instructions
-            lblTitle = new Label
-            {
-                Text = "Database Schema Viewer",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                Location = new Point(10, 10),
-                AutoSize = true
-            };
-
-            lblInstructions = new Label
-            {
-                Text = "Select a table from the list to view its structure and data.",
-                Location = new Point(10, 35),
-                Size = new Size(950, 20),
-                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
-            };
-
-            // Add refresh button
-            btnRefresh = new Button
-            {
-                Text = "Refresh Tables",
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(950, 15),
-                Size = new Size(100, 30)
-            };
-
-            // Add controls to header panel
-            panelHeader.Controls.Add(lblTitle);
-            panelHeader.Controls.Add(lblInstructions);
-            panelHeader.Controls.Add(btnRefresh);
-
-            // Content container to hold both the left panel and right content
-            Panel contentContainer = new Panel
-            {
-                Dock = DockStyle.Fill
-            };
-
-            // Create split container for main content
-            splitContainer = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = 300,
-                Panel1MinSize = 100,
-                Panel2MinSize = 100
-            };
-
-            // Create left panel for table list
-            panelLeft = new Panel
-            {
-                Dock = DockStyle.Left,
-                Width = 250,
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-
-            lblTableList = new Label
-            {
-                Text = "Database Tables",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Dock = DockStyle.Top,
-                Padding = new Padding(10, 10, 10, 5),
-                Height = 30
-            };
-
-            lstTables = new ListBox
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(10, 0, 10, 10),
-                BorderStyle = BorderStyle.FixedSingle
-            };
-
-            panelLeft.Controls.Add(lstTables);
-            panelLeft.Controls.Add(lblTableList);
-
-            // Create right panel for table details
-            panelRight = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10)
-            };
-
-            // Table Fields Section
-            lblTableFields = new Label
-            {
-                Text = "Table Fields",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Dock = DockStyle.Top,
-                Padding = new Padding(0, 0, 0, 5)
-            };
-
-            dgvFields = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                RowHeadersVisible = false,
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.AliceBlue }
-            };
-
-            Panel panel1Container = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(0, 25, 0, 0)
-            };
-
-            panel1Container.Controls.Add(dgvFields);
-            splitContainer.Panel1.Controls.Add(panel1Container);
-            splitContainer.Panel1.Controls.Add(lblTableFields);
-
-            // Table Data Section
-            lblTableData = new Label
-            {
-                Text = "Table Data (Last 10 Records)",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Dock = DockStyle.Top,
-                Padding = new Padding(0, 0, 0, 5)
-            };
-
-            dgvTableData = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                RowHeadersVisible = false,
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.AliceBlue },
-                AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
-                AllowUserToResizeColumns = true,
-                AllowUserToResizeRows = false,
-                ScrollBars = ScrollBars.Both
-            };
-
-            Panel panel2Container = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(0, 25, 0, 0)
-            };
-
-            panel2Container.Controls.Add(dgvTableData);
-            splitContainer.Panel2.Controls.Add(panel2Container);
-            splitContainer.Panel2.Controls.Add(lblTableData);
-
-            // Add panels to the form
-            panelRight.Controls.Add(splitContainer);
-            contentContainer.Controls.Add(panelRight);
-            contentContainer.Controls.Add(panelLeft);
-
-            this.Controls.Add(contentContainer);
-            this.Controls.Add(panelHeader);
-
-            // Wire up events
-            lstTables.SelectedIndexChanged += LstTables_SelectedIndexChanged;
-            btnRefresh.Click += BtnRefresh_Click;
-
-            // Load tables on control shown
-            this.HandleCreated += SQL_Viewer_Schema_HandleCreated;
-        }
-
-        private void SQL_Viewer_Schema_HandleCreated(object sender, EventArgs e)
-        {
-            // Try to load tables if we have a connection
+            // Make sure we have the latest connection string
             if (string.IsNullOrEmpty(_connectionString))
             {
-                // Try to get connection string from the manager
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+            }
+
+            // If we still don't have a connection string, try to prompt the user
+            if (string.IsNullOrEmpty(_connectionString))
+            {
+                UpdateStatus("No database connection configured. Please set up connection settings.", Color.Red);
+                return;
+            }
+
+            // Make sure connection status is up to date
+            ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+
+            if (ConnectionStatusManager.Instance.IsConnected)
+            {
+                try
+                {
+                    UpdateStatus("Loading database tables...", Color.DarkBlue);
+
+                    // Initialize schema mapper and load tables
+                    _schemaMapper = new SQL_Mapper_Schema(_connectionString);
+                    LoadTableList();
+
+                    _isInitialized = true;
+                }
+                catch (Exception ex)
+                {
+                    UpdateStatus($"Error loading tables: {ex.Message}", Color.Red);
+                }
+            }
+            else
+            {
+                UpdateStatus("Database connection failed. Please check connection settings.", Color.Red);
+            }
+        }
+
+        #endregion
+
+        #region Data Loading & Display  
+
+        private void InitializeData()
+        {
+            // Try to get connection if needed
+            if (string.IsNullOrEmpty(_connectionString))
+            {
                 _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
             }
 
             if (!string.IsNullOrEmpty(_connectionString))
             {
-                InitializeSchemaMapper();
+                UpdateStatus("Initializing database connection...", Color.DarkBlue);
+
+                // Check connection status
+                if (!ConnectionStatusManager.Instance.IsConnected)
+                {
+                    // Force a connection check
+                    ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+                }
+
+                if (ConnectionStatusManager.Instance.IsConnected)
+                {
+                    InitializeSchemaMapper();
+                    _isInitialized = true; // Set initialization flag to prevent redundant loading
+                }
+                else
+                {
+                    UpdateStatus("Unable to connect to database. Please check connection settings.", Color.Red);
+                }
+            }
+            else
+            {
+                UpdateStatus("No database connection configured. Please set up connection settings.", Color.Red);
             }
         }
-
-        private void ConfigureTableDataGrid()
-        {
-            // Add a handler for DataBindingComplete to adjust column widths after data binding
-            dgvTableData.DataBindingComplete += (sender, e) =>
-            {
-                if (e.ListChangedType != ListChangedType.ItemDeleted)
-                {
-                    // First auto-size columns based on header and content
-                    dgvTableData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
-
-                    // Apply formatting to monetary columns
-                    FormatDataGridViewColumns(dgvTableData);
-
-                    // Ensure there's at least one scrollable column
-                    bool hasScrollableColumn = false;
-
-                    foreach (DataGridViewColumn col in dgvTableData.Columns)
-                    {
-                        // If any column width is greater than 300, limit it and ensure scrollbars
-                        if (col.Width > 300)
-                        {
-                            col.Width = 300;
-                            hasScrollableColumn = true;
-                        }
-                    }
-
-                    // If no column needed scrolling, make the last column fill available space
-                    if (!hasScrollableColumn && dgvTableData.Columns.Count > 0)
-                    {
-                        dgvTableData.Columns[dgvTableData.Columns.Count - 1].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-                    }
-                }
-            };
-        }
-
-        #endregion
-
-        #region Data Loading & Display
 
         private void InitializeSchemaMapper()
         {
@@ -351,12 +230,13 @@ namespace Manny_Tools_Claude
                     return;
                 }
 
+                UpdateStatus("Initializing schema mapper...", Color.DarkBlue);
                 _schemaMapper = new SQL_Mapper_Schema(_connectionString);
                 LoadTableList();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error initializing schema mapper: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                UpdateStatus($"Error initializing schema mapper: {ex.Message}", Color.Red);
             }
         }
 
@@ -364,24 +244,26 @@ namespace Manny_Tools_Claude
         {
             try
             {
+                UpdateStatus("Loading tables...", Color.DarkBlue);
                 Cursor.Current = Cursors.WaitCursor;
 
                 // Check if connection is active
-                if (!ConnectionStatusManager.Instance.IsConnected)
+                bool connectionActive = TestConnection();
+                if (!connectionActive)
                 {
-                    ConnectionStatusManager.Instance.CheckConnection(_connectionString);
-                    if (!ConnectionStatusManager.Instance.IsConnected)
-                    {
-                        Cursor.Current = Cursors.Default;
-                        return;
-                    }
+                    UpdateStatus("Database connection failed. Please check connection settings.", Color.Red);
+                    Cursor.Current = Cursors.Default;
+                    return;
                 }
 
                 // Get table names
-                var tables = SQL_Get_Generic_List.ExecuteQuery<SQL_Mapper_Schema.TableInfo>(
-                    _connectionString,
-                    "SELECT name AS TableName, SCHEMA_NAME(schema_id) AS SchemaName FROM sys.tables ORDER BY name"
-                );
+                var tables = GetTables();
+                if (tables == null || tables.Count == 0)
+                {
+                    UpdateStatus("No tables found in database.", Color.DarkBlue);
+                    Cursor.Current = Cursors.Default;
+                    return;
+                }
 
                 lstTables.Items.Clear();
                 foreach (var table in tables)
@@ -396,19 +278,52 @@ namespace Manny_Tools_Claude
                 lblTableFields.Text = "Table Fields";
                 lblTableData.Text = "Table Data (Latest 10 Records)";
 
-                // Auto select the first table if available
+                // Auto select the first table if available  
                 if (lstTables.Items.Count > 0)
                 {
                     lstTables.SelectedIndex = 0;
                 }
+
+                UpdateStatus($"Loaded {tables.Count} tables", Color.Green);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading tables: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                UpdateStatus($"Error loading tables: {ex.Message}", Color.Red);
             }
             finally
             {
                 Cursor.Current = Cursors.Default;
+            }
+        }
+
+        private bool TestConnection()
+        {
+            try
+            {
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                {
+                    connection.Open();
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private List<SQL_Mapper_Schema.TableInfo> GetTables()
+        {
+            try
+            {
+                return SQL_Get_Generic_List.ExecuteQuery<SQL_Mapper_Schema.TableInfo>(
+                    _connectionString,
+                    "SELECT name AS TableName, SCHEMA_NAME(schema_id) AS SchemaName FROM sys.tables ORDER BY name"
+                );
+            }
+            catch
+            {
+                return new List<SQL_Mapper_Schema.TableInfo>();
             }
         }
 
@@ -430,9 +345,10 @@ namespace Manny_Tools_Claude
         {
             try
             {
+                UpdateStatus($"Loading details for table: {tableName}...", Color.DarkBlue);
                 Cursor.Current = Cursors.WaitCursor;
 
-                // Update labels
+                // Update labels 
                 lblTableFields.Text = $"Table Fields: {tableName}";
                 lblTableData.Text = $"Table Data: {tableName} (Latest 10 Records)";
 
@@ -440,7 +356,7 @@ namespace Manny_Tools_Claude
                 string columnsQuery = @"
                     SELECT 
                         c.name AS ColumnName,
-                        TYPE_NAME(c.user_type_id) AS DataType,
+                        TYPE_NAME(c.user_type_id) AS DataType,  
                         c.max_length AS MaxLength,
                         c.is_nullable AS IsNullable,
                         CASE WHEN pk.column_id IS NOT NULL THEN 'Yes' ELSE 'No' END AS IsPrimaryKey,
@@ -466,14 +382,18 @@ namespace Manny_Tools_Claude
                     new { TableName = tableName }
                 );
 
+                if (columns == null || columns.Count == 0)
+                {
+                    UpdateStatus($"No columns found for table: {tableName}", Color.Red);
+                    return;
+                }
+
                 // Display columns in grid
                 dgvFields.DataSource = columns;
 
                 // Get and display sample data - get LATEST 10 records
-                string dataQuery;
-
-                // Try to identify primary key or identity column for proper ordering
                 string orderByColumn = GetTableIdentityOrKeyColumn(tableName);
+                string dataQuery;
 
                 if (!string.IsNullOrEmpty(orderByColumn))
                 {
@@ -482,19 +402,21 @@ namespace Manny_Tools_Claude
                 }
                 else
                 {
-                    // Fallback - try to order by first column descending
-                    dataQuery = $"SELECT TOP 10 * FROM [{tableName}] ORDER BY (SELECT TOP 1 column_name FROM information_schema.columns WHERE table_name = '{tableName}') DESC";
+                    // Fallback - just get top 10 records
+                    dataQuery = $"SELECT TOP 10 * FROM [{tableName}]";
                 }
 
-                var sampleData = GetTableData(tableName, dataQuery);
+                DataTable sampleData = GetTableData(tableName, dataQuery);
                 dgvTableData.DataSource = sampleData;
 
-                // Apply formatting to monetary columns
+                // Apply formatting to monetary columns  
                 FormatDataGridViewColumns(dgvTableData);
+
+                UpdateStatus($"Loaded table details for: {tableName}", Color.Green);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading table details: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                UpdateStatus($"Error loading table details: {ex.Message}", Color.Red);
             }
             finally
             {
@@ -530,7 +452,7 @@ namespace Manny_Tools_Claude
                 string pkQuery = @"
                     SELECT TOP 1 c.name
                     FROM sys.columns c
-                    INNER JOIN sys.index_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                    INNER JOIN sys.index_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id  
                     INNER JOIN sys.indexes i ON i.object_id = ic.object_id AND i.index_id = ic.index_id
                     WHERE 
                         c.object_id = OBJECT_ID(@TableName)
@@ -538,10 +460,10 @@ namespace Manny_Tools_Claude
                     ORDER BY ic.key_ordinal";
 
                 string pkColumn = SQL_Get_Generic_List.ExecuteScalar<string>(
-                    _connectionString,
-                    pkQuery,
-                    new { TableName = tableName }
-                );
+                                _connectionString,
+                                pkQuery,
+                                new { TableName = tableName }
+                                );
 
                 return pkColumn;
             }
@@ -553,21 +475,82 @@ namespace Manny_Tools_Claude
 
         private DataTable GetTableData(string tableName, string query)
         {
-            using (var connection = new Microsoft.Data.SqlClient.SqlConnection(_connectionString))
+            DataTable dataTable = new DataTable();
+
+            try
             {
-                connection.Open();
-                using (var adapter = new Microsoft.Data.SqlClient.SqlDataAdapter(query, connection))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    DataTable dataTable = new DataTable();
-                    adapter.Fill(dataTable);
-                    return dataTable;
+                    connection.Open();
+
+                    using (var adapter = new SqlDataAdapter(query, connection))
+                    {
+                        adapter.Fill(dataTable);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Error loading table data: {ex.Message}", Color.Red);
+            }
+
+            return dataTable;
+        }
+
+        private void UpdateStatus(string message, Color color)
+        {
+            if (lblStatus.InvokeRequired)
+            {
+                lblStatus.Invoke(new Action(() => {
+                    lblStatus.Text = message;
+                    lblStatus.ForeColor = color;
+                }));
+            }
+            else
+            {
+                lblStatus.Text = message;
+                lblStatus.ForeColor = color;
             }
         }
 
         #endregion
 
         #region Monetary Column Formatting
+
+        private void ConfigureTableDataGrid()
+        {
+            // Add a handler for DataBindingComplete to adjust column widths after data binding
+            dgvTableData.DataBindingComplete += (sender, e) =>
+            {
+                if (e.ListChangedType != ListChangedType.ItemDeleted)
+                {
+                    // First auto-size columns based on header and content
+                    dgvTableData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
+
+                    // Apply formatting to monetary columns
+                    FormatDataGridViewColumns(dgvTableData);
+
+                    // Ensure there's at least one scrollable column
+                    bool hasScrollableColumn = false;
+
+                    foreach (DataGridViewColumn col in dgvTableData.Columns)
+                    {
+                        // If any column width is greater than 300, limit it and ensure scrollbars  
+                        if (col.Width > 300)
+                        {
+                            col.Width = 300;
+                            hasScrollableColumn = true;
+                        }
+                    }
+
+                    // If no column needed scrolling, make the last column fill available space
+                    if (!hasScrollableColumn && dgvTableData.Columns.Count > 0)
+                    {
+                        dgvTableData.Columns[dgvTableData.Columns.Count - 1].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+                    }
+                }
+            };
+        }
 
         /// <summary>
         /// Determines if a column is likely to contain monetary values based on its name
@@ -607,7 +590,7 @@ namespace Manny_Tools_Claude
                     return true;
             }
 
-            // Check for column names that start with common monetary prefixes
+            // Check for column names that start with common monetary prefixes 
             string[] monetaryPrefixes = new[] { "$", "amt_", "amount_", "price_" };
             foreach (string prefix in monetaryPrefixes)
             {
@@ -643,7 +626,7 @@ namespace Manny_Tools_Claude
                     // Right-align header
                     column.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleRight;
 
-                    // Right-align cells and format as currency if it's a numeric type
+                    // Right-align cells and format as currency if it's a numeric type  
                     column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
 
                     // Set currency format if the column type is appropriate

@@ -21,10 +21,18 @@ namespace Manny_Tools_Claude
         /// <returns>A list of objects of type T populated with the query results.</returns>
         public static List<T> ExecuteQuery<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            try
             {
-                connection.Open();
-                return connection.Query<T>(query, parameters).AsList();
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                {
+                    connection.Open();
+                    var results = connection.Query<T>(query, parameters);
+                    return results.AsList();
+                }
+            }
+            catch (Exception)
+            {
+                return new List<T>();
             }
         }
 
@@ -38,10 +46,17 @@ namespace Manny_Tools_Claude
         /// <returns>A single object of type T.</returns>
         public static T ExecuteSingle<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            try
             {
-                connection.Open();
-                return connection.QuerySingleOrDefault<T>(query, parameters);
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                {
+                    connection.Open();
+                    return connection.QuerySingleOrDefault<T>(query, parameters);
+                }
+            }
+            catch (Exception)
+            {
+                return default;
             }
         }
 
@@ -55,10 +70,17 @@ namespace Manny_Tools_Claude
         /// <returns>The scalar value returned by the query.</returns>
         public static T ExecuteScalar<T>(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            try
             {
-                connection.Open();
-                return connection.ExecuteScalar<T>(query, parameters);
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                {
+                    connection.Open();
+                    return connection.ExecuteScalar<T>(query, parameters);
+                }
+            }
+            catch (Exception)
+            {
+                return default;
             }
         }
 
@@ -71,10 +93,17 @@ namespace Manny_Tools_Claude
         /// <returns>The number of rows affected.</returns>
         public static int ExecuteNonQuery(string connectionString, string query, object parameters = null)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            try
             {
-                connection.Open();
-                return connection.Execute(query, parameters);
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                {
+                    connection.Open();
+                    return connection.Execute(query, parameters);
+                }
+            }
+            catch (Exception)
+            {
+                return 0;
             }
         }
 
@@ -86,23 +115,30 @@ namespace Manny_Tools_Claude
         /// <returns>True if the transaction completed successfully, false otherwise.</returns>
         public static bool ExecuteInTransaction(string connectionString, Action<IDbConnection, IDbTransaction> actions)
         {
-            using (var connection = DatabaseConnectionManager.CreateConnectionWithTimeout(connectionString))
+            try
             {
-                connection.Open();
-                using (var transaction = connection.BeginTransaction())
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
                 {
-                    try
+                    connection.Open();
+                    using (var transaction = connection.BeginTransaction())
                     {
-                        actions(connection, transaction);
-                        transaction.Commit();
-                        return true;
-                    }
-                    catch
-                    {
-                        transaction.Rollback();
-                        throw;
+                        try
+                        {
+                            actions(connection, transaction);
+                            transaction.Commit();
+                            return true;
+                        }
+                        catch
+                        {
+                            transaction.Rollback();
+                            return false;
+                        }
                     }
                 }
+            }
+            catch
+            {
+                return false;
             }
         }
     }

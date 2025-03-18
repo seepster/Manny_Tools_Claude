@@ -1,625 +1,499 @@
 ﻿using System;
-using System.Windows.Forms;
-using System.Drawing;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.IO;
+using System.Drawing.Text;
+using Manny_Tools_Claude.DTO;
 
 namespace Manny_Tools_Claude
 {
     public partial class CreateSizesForm : UserControl
     {
-        #region Fields
-
-        // Form controls
-        private Label lblTitle;
-        private ComboBox cmbProductType;
-        private Label lblProductType;
-        private ComboBox cmbSizeType;
-        private Label lblSizeType;
-        private Label lblSizeInfo;
-        private TextBox txtBaseSize;
-        private Label lblBaseSize;
-        private NumericUpDown numIncrement;
-        private Label lblIncrement;
-        private NumericUpDown numQuantity;
-        private Label lblQuantity;
-        private Button btnGenerate;
-        private DataGridView dgvSizes;
-        private Button btnExport;
-
-        // Data
-        private List<SizeInfo> _generatedSizes;
-
-        #endregion
-
-        #region Constructor & Initialization
+        // Define fields to store form data
+        private List<CreateSizesProductSizeItem> productSizes = new List<CreateSizesProductSizeItem>();
+        private List<CreateSizesSizeLinkItem> sizeLinks = new List<CreateSizesSizeLinkItem>();
+        private List<CreateSizesSupplierItem> suppliers = new List<CreateSizesSupplierItem>();
+        private List<string> productCodes = new List<string>();
+        private List<string> parentCodes = new List<string>();
+        private List<string> sixDigitParentCodes = new List<string>();
+        private List<CSVFileProduct> createdProducts = new List<CSVFileProduct>();
+        private CreateSizesProductSizeItem selectedProductSize = new CreateSizesProductSizeItem();
+        private CreateSizesSupplierItem selectedSupplier = new CreateSizesSupplierItem();
+        private CreateSizesTemplateItem activeTemplate = new CreateSizesTemplateItem();
+        private int nextAvailableParentCode = 100000;
 
         public CreateSizesForm()
         {
             InitializeComponent();
-            _generatedSizes = new List<SizeInfo>();
-        }
-
-        private void InitializeComponent()
-        {
-            this.BackColor = SystemColors.Control;
-
-            // Create header panel
-            Panel panelHeader = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 60,
-                BackColor = Color.FromArgb(240, 240, 240)
-            };
-
-            // Title
-            lblTitle = new Label
-            {
-                Text = "Size Generator",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                Location = new Point(10, 10),
-                AutoSize = true
-            };
-
-            lblSizeInfo = new Label
-            {
-                Text = "Generate standard sizes based on product type and parameters",
-                Location = new Point(10, 35),
-                Size = new Size(950, 20),
-                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top
-            };
-
-            panelHeader.Controls.Add(lblTitle);
-            panelHeader.Controls.Add(lblSizeInfo);
-
-            // Create controls panel
-            Panel panelControls = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 180,
-                Padding = new Padding(10)
-            };
-
-            // Product Type
-            lblProductType = new Label
-            {
-                Text = "Product Type:",
-                Location = new Point(20, 20),
-                AutoSize = true
-            };
-
-            cmbProductType = new ComboBox
-            {
-                Location = new Point(150, 18),
-                Width = 200,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Populate product types
-            cmbProductType.Items.AddRange(new object[] {
-                "Apparel",
-                "Footwear",
-                "Accessories",
-                "Furniture"
-            });
-            cmbProductType.SelectedIndex = 0;
-            cmbProductType.SelectedIndexChanged += CmbProductType_SelectedIndexChanged;
-
-            // Size Type
-            lblSizeType = new Label
-            {
-                Text = "Size Type:",
-                Location = new Point(20, 55),
-                AutoSize = true
-            };
-
-            cmbSizeType = new ComboBox
-            {
-                Location = new Point(150, 53),
-                Width = 200,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Base Size
-            lblBaseSize = new Label
-            {
-                Text = "Base Size:",
-                Location = new Point(20, 90),
-                AutoSize = true
-            };
-
-            txtBaseSize = new TextBox
-            {
-                Location = new Point(150, 88),
-                Width = 200
-            };
-
-            // Increment
-            lblIncrement = new Label
-            {
-                Text = "Increment:",
-                Location = new Point(400, 20),
-                AutoSize = true
-            };
-
-            numIncrement = new NumericUpDown
-            {
-                Location = new Point(530, 18),
-                Width = 200,
-                Minimum = 0.1m,
-                Maximum = 10m,
-                DecimalPlaces = 1,
-                Increment = 0.1m,
-                Value = 1.0m
-            };
-
-            // Quantity
-            lblQuantity = new Label
-            {
-                Text = "Quantity:",
-                Location = new Point(400, 55),
-                AutoSize = true
-            };
-
-            numQuantity = new NumericUpDown
-            {
-                Location = new Point(530, 53),
-                Width = 200,
-                Minimum = 1,
-                Maximum = 100,
-                Value = 10
-            };
-
-            // Generate Button
-            btnGenerate = new Button
-            {
-                Text = "Generate Sizes",
-                Location = new Point(530, 88),
-                Width = 200,
-                Height = 30
-            };
-            btnGenerate.Click += BtnGenerate_Click;
-
-            // Add controls to panel
-            panelControls.Controls.Add(lblProductType);
-            panelControls.Controls.Add(cmbProductType);
-            panelControls.Controls.Add(lblSizeType);
-            panelControls.Controls.Add(cmbSizeType);
-            panelControls.Controls.Add(lblBaseSize);
-            panelControls.Controls.Add(txtBaseSize);
-            panelControls.Controls.Add(lblIncrement);
-            panelControls.Controls.Add(numIncrement);
-            panelControls.Controls.Add(lblQuantity);
-            panelControls.Controls.Add(numQuantity);
-            panelControls.Controls.Add(btnGenerate);
-
-            // Create data panel
-            Panel panelData = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10)
-            };
-
-            // DataGridView for sizes
-            dgvSizes = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                RowHeadersVisible = false,
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.AliceBlue },
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                MultiSelect = true
-            };
-
-            // Export Button
-            btnExport = new Button
-            {
-                Text = "Export Sizes",
-                Dock = DockStyle.Bottom,
-                Height = 30,
-                Margin = new Padding(0, 10, 0, 0)
-            };
-            btnExport.Click += BtnExport_Click;
-
-            // Add controls to data panel
-            panelData.Controls.Add(dgvSizes);
-            panelData.Controls.Add(btnExport);
-
-            // Add panels to main control
-            this.Controls.Add(panelData);
-            this.Controls.Add(panelControls);
-            this.Controls.Add(panelHeader);
-
-            // Initialize size types
-            PopulateSizeTypes("Apparel");
-        }
-
-        #endregion
-
-        #region Event Handlers
-
-        private void CmbProductType_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            string selectedProductType = cmbProductType.SelectedItem.ToString();
-            PopulateSizeTypes(selectedProductType);
-        }
-
-        private void BtnGenerate_Click(object sender, EventArgs e)
-        {
-            GenerateSizes();
-        }
-
-        private void BtnExport_Click(object sender, EventArgs e)
-        {
-            ExportSizes();
-        }
-
-        #endregion
-
-        #region Size Generation Logic
-
-        private void PopulateSizeTypes(string productType)
-        {
-            cmbSizeType.Items.Clear();
-
-            switch (productType)
-            {
-                case "Apparel":
-                    cmbSizeType.Items.AddRange(new object[] {
-                        "US Standard (S,M,L,XL)",
-                        "US Numeric (2,4,6,8)",
-                        "European (36,38,40,42)",
-                        "UK (8,10,12,14)"
-                    });
-                    break;
-
-                case "Footwear":
-                    cmbSizeType.Items.AddRange(new object[] {
-                        "US Men's",
-                        "US Women's",
-                        "European",
-                        "UK"
-                    });
-                    break;
-
-                case "Accessories":
-                    cmbSizeType.Items.AddRange(new object[] {
-                        "Numeric (S,M,L)",
-                        "Inches",
-                        "Centimeters"
-                    });
-                    break;
-
-                case "Furniture":
-                    cmbSizeType.Items.AddRange(new object[] {
-                        "Inches",
-                        "Centimeters",
-                        "Custom"
-                    });
-                    break;
-            }
-
-            if (cmbSizeType.Items.Count > 0)
-            {
-                cmbSizeType.SelectedIndex = 0;
-                SetDefaultBaseSize();
-            }
-        }
-
-        private void SetDefaultBaseSize()
-        {
-            string productType = cmbProductType.SelectedItem.ToString();
-            string sizeType = cmbSizeType.SelectedItem.ToString();
-
-            switch (productType)
-            {
-                case "Apparel":
-                    if (sizeType == "US Standard (S,M,L,XL)")
-                        txtBaseSize.Text = "S";
-                    else if (sizeType == "US Numeric (2,4,6,8)")
-                        txtBaseSize.Text = "2";
-                    else if (sizeType == "European (36,38,40,42)")
-                        txtBaseSize.Text = "36";
-                    else if (sizeType == "UK (8,10,12,14)")
-                        txtBaseSize.Text = "8";
-                    break;
-
-                case "Footwear":
-                    if (sizeType == "US Men's")
-                        txtBaseSize.Text = "7";
-                    else if (sizeType == "US Women's")
-                        txtBaseSize.Text = "5";
-                    else if (sizeType == "European")
-                        txtBaseSize.Text = "38";
-                    else if (sizeType == "UK")
-                        txtBaseSize.Text = "6";
-                    break;
-
-                case "Accessories":
-                    if (sizeType == "Numeric (S,M,L)")
-                        txtBaseSize.Text = "S";
-                    else if (sizeType == "Inches")
-                        txtBaseSize.Text = "24";
-                    else if (sizeType == "Centimeters")
-                        txtBaseSize.Text = "60";
-                    break;
-
-                case "Furniture":
-                    if (sizeType == "Inches")
-                        txtBaseSize.Text = "36";
-                    else if (sizeType == "Centimeters")
-                        txtBaseSize.Text = "90";
-                    else if (sizeType == "Custom")
-                        txtBaseSize.Text = "Small";
-                    break;
-            }
-        }
-
-        private void GenerateSizes()
-        {
             try
             {
-                string productType = cmbProductType.SelectedItem.ToString();
-                string sizeType = cmbSizeType.SelectedItem.ToString();
-                string baseSize = txtBaseSize.Text.Trim();
-                decimal increment = numIncrement.Value;
-                int quantity = (int)numQuantity.Value;
-
-                if (string.IsNullOrEmpty(baseSize))
-                {
-                    MessageBox.Show("Please enter a base size.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                _generatedSizes = new List<SizeInfo>();
-
-                // Generate sizes based on product type and size type
-                if (productType == "Apparel" && sizeType == "US Standard (S,M,L,XL)")
-                {
-                    string[] standardSizes = { "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL" };
-                    int startIndex = Array.IndexOf(standardSizes, baseSize);
-
-                    if (startIndex < 0)
-                    {
-                        MessageBox.Show("Invalid base size for US Standard sizes. Please use XS, S, M, L, XL, 2XL, 3XL, or 4XL.",
-                            "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-
-                    for (int i = 0; i < quantity && (startIndex + i) < standardSizes.Length; i++)
-                    {
-                        _generatedSizes.Add(new SizeInfo
-                        {
-                            SizeCode = standardSizes[startIndex + i],
-                            Description = GetSizeDescription(productType, sizeType, standardSizes[startIndex + i]),
-                            SortOrder = i + 1
-                        });
-                    }
-                }
-                else if (decimal.TryParse(baseSize, out decimal numericBaseSize))
-                {
-                    // For numeric sizes
-                    for (int i = 0; i < quantity; i++)
-                    {
-                        decimal currentSize = numericBaseSize + (i * increment);
-                        string sizeCode = currentSize.ToString();
-
-                        // Format size code appropriately
-                        if (currentSize == Math.Floor(currentSize))
-                            sizeCode = Math.Floor(currentSize).ToString();
-
-                        _generatedSizes.Add(new SizeInfo
-                        {
-                            SizeCode = sizeCode,
-                            Description = GetSizeDescription(productType, sizeType, sizeCode),
-                            SortOrder = i + 1
-                        });
-                    }
-                }
-                else
-                {
-                    // For custom text-based sizes
-                    _generatedSizes.Add(new SizeInfo
-                    {
-                        SizeCode = baseSize,
-                        Description = GetSizeDescription(productType, sizeType, baseSize),
-                        SortOrder = 1
-                    });
-
-                    switch (baseSize.ToUpper())
-                    {
-                        case "S":
-                            if (quantity > 1) _generatedSizes.Add(new SizeInfo { SizeCode = "M", Description = GetSizeDescription(productType, sizeType, "M"), SortOrder = 2 });
-                            if (quantity > 2) _generatedSizes.Add(new SizeInfo { SizeCode = "L", Description = GetSizeDescription(productType, sizeType, "L"), SortOrder = 3 });
-                            if (quantity > 3) _generatedSizes.Add(new SizeInfo { SizeCode = "XL", Description = GetSizeDescription(productType, sizeType, "XL"), SortOrder = 4 });
-                            break;
-
-                        case "SMALL":
-                            if (quantity > 1) _generatedSizes.Add(new SizeInfo { SizeCode = "Medium", Description = GetSizeDescription(productType, sizeType, "Medium"), SortOrder = 2 });
-                            if (quantity > 2) _generatedSizes.Add(new SizeInfo { SizeCode = "Large", Description = GetSizeDescription(productType, sizeType, "Large"), SortOrder = 3 });
-                            if (quantity > 3) _generatedSizes.Add(new SizeInfo { SizeCode = "X-Large", Description = GetSizeDescription(productType, sizeType, "X-Large"), SortOrder = 4 });
-                            break;
-
-                        default:
-                            MessageBox.Show("For text-based sizes, please start with a standard size like 'S' or 'Small'.",
-                                "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
-                    }
-                }
-
-                // Display generated sizes in the grid
-                DisplaySizes();
+                LoadProductSizes();
+                LoadSizeLinks();
+                LoadSuppliers();
             }
-            catch (Exception ex)
+            catch
             {
-                MessageBox.Show($"Error generating sizes: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Some elements could not be loaded.");
+            }
+
+        }
+
+        public void LoadProductSizes()
+        {
+            ProductSizeComboBox.Items.Clear();
+            //load Product Size dropdown from sql connection
+            string queryForProductSize = "select OID, Number, Description from ProductSize";
+            try
+            {
+                DatabaseConnectionManager.Instance.LoadConnectionString();
+                productSizes = SQL_Get_Generic_List.ExecuteQuery<CreateSizesProductSizeItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForProductSize, null);
+
+                foreach (CreateSizesProductSizeItem item in productSizes)
+                {
+                    ProductSizeComboBox.Items.Add(item.ToString());
+                }
+            }
+            catch
+            {
+                MessageBox.Show("No element could be loaded.");
             }
         }
 
-        private string GetSizeDescription(string productType, string sizeType, string sizeCode)
+        public void LoadSizeLinks()
         {
-            switch (productType)
+            SizeLinksListBox.Items.Clear();
+            int selectedProductSize = ProductSizeComboBox.SelectedIndex;
+            if (selectedProductSize < 0 || selectedProductSize > ProductSizeComboBox.Items.Count)
             {
-                case "Apparel":
-                    if (sizeType == "US Standard (S,M,L,XL)")
-                    {
-                        switch (sizeCode)
-                        {
-                            case "XS": return "Extra Small";
-                            case "S": return "Small";
-                            case "M": return "Medium";
-                            case "L": return "Large";
-                            case "XL": return "Extra Large";
-                            case "2XL": return "2X Large";
-                            case "3XL": return "3X Large";
-                            case "4XL": return "4X Large";
-                            default: return sizeCode;
-                        }
-                    }
-                    else if (sizeType == "US Numeric (2,4,6,8)")
-                    {
-                        return $"US Size {sizeCode}";
-                    }
-                    else if (sizeType == "European (36,38,40,42)")
-                    {
-                        return $"EU Size {sizeCode}";
-                    }
-                    else if (sizeType == "UK (8,10,12,14)")
-                    {
-                        return $"UK Size {sizeCode}";
-                    }
-                    break;
-
-                case "Footwear":
-                    if (sizeType == "US Men's")
-                    {
-                        return $"US Men's Size {sizeCode}";
-                    }
-                    else if (sizeType == "US Women's")
-                    {
-                        return $"US Women's Size {sizeCode}";
-                    }
-                    else if (sizeType == "European")
-                    {
-                        return $"EU Size {sizeCode}";
-                    }
-                    else if (sizeType == "UK")
-                    {
-                        return $"UK Size {sizeCode}";
-                    }
-                    break;
-
-                case "Accessories":
-                    if (sizeType == "Numeric (S,M,L)")
-                    {
-                        switch (sizeCode)
-                        {
-                            case "S": return "Small";
-                            case "M": return "Medium";
-                            case "L": return "Large";
-                            default: return sizeCode;
-                        }
-                    }
-                    else if (sizeType == "Inches")
-                    {
-                        return $"{sizeCode}\"";
-                    }
-                    else if (sizeType == "Centimeters")
-                    {
-                        return $"{sizeCode} cm";
-                    }
-                    break;
-
-                case "Furniture":
-                    if (sizeType == "Inches")
-                    {
-                        return $"{sizeCode}\"";
-                    }
-                    else if (sizeType == "Centimeters")
-                    {
-                        return $"{sizeCode} cm";
-                    }
-                    break;
+                selectedProductSize = 0;
             }
+            //load SizeLink list from sql connection using selected Product Size
+            string queryForSizeLink = $"select SizeCode, Description from SizeLink where Holder = '{productSizes[selectedProductSize].OID}'";
+            sizeLinks = SQL_Get_Generic_List.ExecuteQuery<CreateSizesSizeLinkItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForSizeLink, null);
 
-            return sizeCode;
-        }
-
-        private void DisplaySizes()
-        {
-            // Create a DataTable for binding to the grid
-            var bindingSource = new BindingSource();
-            bindingSource.DataSource = _generatedSizes;
-
-            dgvSizes.DataSource = bindingSource;
-
-            // Format columns
-            if (dgvSizes.Columns.Count > 0)
+            foreach (CreateSizesSizeLinkItem item in sizeLinks)
             {
-                dgvSizes.Columns["SortOrder"].HeaderText = "Sequence";
-                dgvSizes.Columns["SizeCode"].HeaderText = "Size Code";
-                dgvSizes.Columns["Description"].HeaderText = "Description";
-
-                dgvSizes.Columns["SortOrder"].Width = 80;
-                dgvSizes.Columns["SizeCode"].Width = 100;
-                dgvSizes.Columns["Description"].Width = 250;
+                SizeLinksListBox.Items.Add(item.ToString());
             }
         }
 
-        private void ExportSizes()
+        public void LoadSuppliers()
         {
-            if (_generatedSizes.Count == 0)
+            SupplierComboBox.Items.Clear();
+
+            //load suppliers list from sql connection 
+            string queryForSuppliers = $"select AccountNumber, AccountName from Supplier";
+            suppliers = SQL_Get_Generic_List.ExecuteQuery<CreateSizesSupplierItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForSuppliers, null);
+
+            foreach (CreateSizesSupplierItem supplier in suppliers)
             {
-                MessageBox.Show("Please generate sizes first.", "No Data", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
+                SupplierComboBox.Items.Add(supplier.ToString());
+            }
+            if (suppliers.Count > 0)
+            {
+                selectedSupplier = suppliers[0];
             }
 
-            SaveFileDialog saveDialog = new SaveFileDialog
-            {
-                Filter = "CSV Files (*.csv)|*.csv|Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
-                DefaultExt = "csv",
-                FileName = $"Sizes_{cmbProductType.Text}_{DateTime.Now:yyyyMMdd}.csv"
-            };
+        }
 
-            if (saveDialog.ShowDialog() == DialogResult.OK)
+        public void LoadParentCodes()
+        {
+            string queryForParentCodes = "select ParentCode from ProductInfo sort asc";
+            parentCodes = SQL_Get_Generic_List.ExecuteQuery<string>(DatabaseConnectionManager.Instance.ConnectionString, queryForParentCodes, null);
+
+        }
+
+        public void LoadProductCodes()
+        {
+            string queryForProductCodes = "select ProductCode from ProductInfo";
+            productCodes = SQL_Get_Generic_List.ExecuteQuery<string>(DatabaseConnectionManager.Instance.ConnectionString, queryForProductCodes, null);
+        }
+
+        public void CreateActiveTemplate(string ProductParentCode)
+        {
+            string productCode = ProductParentCode;
+            if (productCode != null && productCode != string.Empty)
             {
                 try
                 {
-                    using (System.IO.StreamWriter writer = new System.IO.StreamWriter(saveDialog.FileName))
+                    string queryProductCodeParentCode = $"select top 1 ParentCode from ProductInfo where ProductCode = '{productCode}'";
+                    int querySingleResultParentCode = SQL_Get_Generic_List.ExecuteSingle<int>(DatabaseConnectionManager.Instance.ConnectionString, queryProductCodeParentCode, null);
+                    if (!(querySingleResultParentCode >= 0))
                     {
-                        // Write header
-                        writer.WriteLine("Sequence,SizeCode,Description");
-
-                        // Write data
-                        foreach (var size in _generatedSizes)
-                        {
-                            writer.WriteLine($"{size.SortOrder},{size.SizeCode},{size.Description}");
-                        }
+                        MessageBox.Show("Invalid Product/Parent Code for template.");
+                        return;
                     }
 
-                    MessageBox.Show($"Size data exported successfully to {saveDialog.FileName}",
-                        "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    int ParentCode = querySingleResultParentCode;
+                    string queryProductInfoUsingParentCode = $"select top 1 ParentCode, Description, UnitSize, CostPriceExcl, Markup, ProductSize, SizeLink from ProductInfo where ParentCode = '{ParentCode}' ";
+                    ProductInfo productInfo = SQL_Get_Generic_List.ExecuteSingle<ProductInfo>(DatabaseConnectionManager.Instance.ConnectionString, queryProductInfoUsingParentCode, null);
+                    if (productInfo == null)
+                    {
+                        MessageBox.Show("Invalid Product/Parent Code for template.");
+                        return;
+                    }
+
+                    activeTemplate.ParentCode = productInfo.ParentCode;
+                    activeTemplate.Description = productInfo.Description;
+                    activeTemplate.Markup = productInfo.Markup;
+                    activeTemplate.CostPriceExcl = productInfo.CostPriceExcl;
+
+                    activeTemplate.ProductSize = new CreateSizesProductSizeItem();
+                    activeTemplate.ProductSize.Number = productInfo.ProductSize;
+
+                    string querySizeLink = $"select SizeCode, Description from SizeLink where Holder = '{activeTemplate.ProductSize.Number}'";
+                    activeTemplate.SizeLinks = SQL_Get_Generic_List.ExecuteQuery<CreateSizesSizeLinkItem>(DatabaseConnectionManager.Instance.ConnectionString, querySizeLink, null);
+
+
+                    string querySupplierProductLinks = $"select top 1 SupplierProductcode from supplierproductlinks where ProductCode = '{ParentCode}'";
+                    string supplierProductCode = SQL_Get_Generic_List.ExecuteSingle<string>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierProductLinks, null);
+                    activeTemplate.SupplierCode = supplierProductCode;
+
+                    string querySupplierNumber = $"select top 1 CreditorNumber from supplierproductlinks where ProductCode = '{ParentCode}'";
+                    string supplierNumber = SQL_Get_Generic_List.ExecuteSingle<string>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierNumber, null);
+                    string querySupplierDetails = $"select top 1 AccountNumber, AccountName from Supplier where AccountNumber = '{supplierNumber}'";
+                    activeTemplate.Supplier = SQL_Get_Generic_List.ExecuteSingle<CreateSizesSupplierItem>(DatabaseConnectionManager.Instance.ConnectionString, querySupplierDetails, null);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error exporting data: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Error loading template: ");
+
+                }
+            }
+
+        }
+
+        private void ProductSizeComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            selectedProductSize = productSizes[ProductSizeComboBox.SelectedIndex];
+            LoadSizeLinks();
+        }
+
+        private void SelectAllCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (SelectAllCheckBox.Checked == true)
+            {
+                for (int i = 0; i < SizeLinksListBox.Items.Count; i++)
+                {
+                    SizeLinksListBox.SetItemChecked(i, true);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < SizeLinksListBox.Items.Count; i++)
+                {
+                    SizeLinksListBox.SetItemChecked(i, false);
                 }
             }
         }
 
-        #endregion
-
-        #region Helper Classes
-
-        public class SizeInfo
+        private void LoadTemplateButton_Click(object sender, EventArgs e)
         {
-            public string SizeCode { get; set; }
-            public string Description { get; set; }
-            public int SortOrder { get; set; }
+            CreateActiveTemplate(Product_ParentCodeTextBox.Text);
+
+            LoadTemplate();
+
         }
 
-        #endregion
+        private void LoadTemplate()
+        {
+            if (activeTemplate.ParentCode != null)
+            {
+                if (activeTemplate.Description != null)
+                {
+                    DescriptionTextBox.Text = activeTemplate.Description;
+
+                }
+                if (activeTemplate.SupplierCode != null)
+                {
+                    SupplierCodeTextBox.Text = activeTemplate.SupplierCode;
+                }
+                if (activeTemplate.ProductSize != null && activeTemplate.ProductSize.Description != null)
+                {
+                    for (int i = 0; i < productSizes.Count; i++)
+                    {
+                        if (productSizes[i].Number == activeTemplate.ProductSize.Number)
+                        {
+                            ProductSizeComboBox.SelectedIndex = i;
+                        }
+                    }
+
+
+                }
+                MarkupTextBox.Text = activeTemplate.Markup.ToString();
+                CostPriceExclTextBox.Text = activeTemplate.CostPriceExcl.ToString();
+
+                if (activeTemplate.Supplier.AccountNumber != null)
+                {
+                    for (int i = 0; i < suppliers.Count; i++)
+                    {
+                        if (suppliers[i].AccountNumber == activeTemplate.Supplier.AccountNumber)
+                        {
+                            SupplierComboBox.SelectedIndex = i;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("No template to load.");
+            }
+
+
+        }
+
+
+
+        private void SupplierNumberComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            selectedSupplier = suppliers[SupplierComboBox.SelectedIndex];
+        }
+
+        private void ClearTemplateButton_Click(object sender, EventArgs e)
+        {
+
+            DescriptionTextBox.Text = string.Empty;
+            SupplierCodeTextBox.Text = string.Empty;
+            MarkupTextBox.Text = string.Empty;
+            CostPriceExclTextBox.Text = string.Empty;
+            if (ProductSizeComboBox.Items.Count >= 0)
+                ProductSizeComboBox.SelectedIndex = 0;
+            if (SupplierComboBox.Items.Count >= 0)
+                SupplierComboBox.SelectedIndex = 0;
+        }
+
+        private void NextAvailableParentCodeButton_Click(object sender, EventArgs e)
+        {
+            string queryParentCode = "select ParentCode from ProductInfo";
+            parentCodes = SQL_Get_Generic_List.ExecuteQuery<string>(DatabaseConnectionManager.Instance.ConnectionString, queryParentCode, null);
+
+            for (int i = 0; i < parentCodes.Count; i++)
+            {
+                if (parentCodes[i] != null)
+                {
+                    if (parentCodes[i].Length == 6)
+                    {
+                        if (sixDigitParentCodes.Contains(parentCodes[i]) == false)
+                        {
+                            sixDigitParentCodes.Add(parentCodes[i]);
+                        }
+                    }
+                }
+
+            }
+
+            //first we need to sort the sixDigitParentCodes list in ascending order
+            sixDigitParentCodes.Sort();
+
+            //check what is the next available integer in the sixDigitParentCodes list starting at 100000
+            LoadProductCodes();
+            while (true)
+            {
+                if (parentCodes.Contains(nextAvailableParentCode.ToString()))
+                {
+                    nextAvailableParentCode++;
+                }
+                else
+                {
+                    if (!productCodes.Contains(nextAvailableParentCode.ToString()))
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        nextAvailableParentCode++;
+                    }
+                }
+            }
+            Product_ParentCodeTextBox.Text = nextAvailableParentCode.ToString();
+        }
+
+        private void CreateCSVFileButton_Click(object sender, EventArgs e)
+        {
+            this.DisableForm();
+            //check if parentcode textbox.text is valid parent code
+            if(parentCodes.Contains(Product_ParentCodeTextBox.Text) || productCodes.Contains(Product_ParentCodeTextBox.Text) || Product_ParentCodeTextBox.Text.Length != 6)
+            {
+                MessageBox.Show("Invalid Parent Code.");
+                this.EnableForm();
+                return;
+            }
+            string validParentCode = Product_ParentCodeTextBox.Text;
+            //first we check which size links are selected
+            for (int i = 0; i < SizeLinksListBox.Items.Count; i++)
+            {
+                if (SizeLinksListBox.GetItemChecked(i))
+                {
+                    CreateSizesSizeLinkItem checkedSizeLinkItem = sizeLinks[i];
+                    string productCode = checkedSizeLinkItem.SizeCode + validParentCode;
+                    if (productCodes.Contains(productCode) || parentCodes.Contains(productCode))
+                    {
+                        MessageBox.Show($"Generated Product Code {productCode} is in use. Choose a new parent Code.");
+                        this.EnableForm();
+                        return;
+                    }
+                    CSVFileProduct cSVFileProduct = new CSVFileProduct();
+                    cSVFileProduct.ProductCode = productCode;
+                    cSVFileProduct.Description =  $"{DescriptionTextBox.Text}";
+                    cSVFileProduct.SizeCode = checkedSizeLinkItem.OID.ToString();
+                    cSVFileProduct.ProductSize = selectedProductSize.OID.ToString();
+                    cSVFileProduct.SupplierCode = SupplierCodeTextBox.Text;
+                    cSVFileProduct.SupplierNumber = selectedSupplier.AccountNumber;
+                    cSVFileProduct.Markup = MarkupTextBox.Text;
+                    cSVFileProduct.CostPriceExcl = CostPriceExclTextBox.Text;
+                    cSVFileProduct.fieldTwo = null;
+                    cSVFileProduct.fieldEight = "0";
+                    cSVFileProduct.fieldNine = "0";
+                    cSVFileProduct.fieldTen = "1";
+                    cSVFileProduct.Markup2 = MarkupTextBox.Text;
+                    cSVFileProduct.CostPriceExcl2 = CostPriceExclTextBox.Text;
+                    cSVFileProduct.CostPriceExcl3 = CostPriceExclTextBox.Text;
+                    cSVFileProduct.SizeCode2 = checkedSizeLinkItem.SizeCode;
+                    cSVFileProduct.fieldThirteen = "0";
+                    cSVFileProduct.fieldFourteen = "0";
+                    cSVFileProduct.fieldFifteen = "0";
+                    cSVFileProduct.fieldEighteen = "0";
+                    cSVFileProduct.fieldNineteen = "0";
+                    cSVFileProduct.fieldTwenty = "0";
+                    cSVFileProduct.fieldTwentyOne = "1";
+                    cSVFileProduct.fieldTwentyTwo = "0";
+                    cSVFileProduct.fieldTwentyThree = "1";
+                    cSVFileProduct.fieldTwentyFour = "1";
+                    cSVFileProduct.fieldTwentyFive = "1";
+                    cSVFileProduct.fieldTwentySix = "1";
+                    cSVFileProduct.fieldTwentySeven = "0";
+                    cSVFileProduct.fieldTwentyEight = "1";
+                    cSVFileProduct.fieldTwentyNine = "0";
+                    cSVFileProduct.fieldThirty = "0";
+                    cSVFileProduct.fieldThirtyOne = null;
+                    cSVFileProduct.fieldThirtyTwo = "1";
+                    cSVFileProduct.fieldThirtyThree = "1";
+                    cSVFileProduct.fieldThirtyFour = "1";
+                    cSVFileProduct.fieldThirtyFive = "1";
+                    cSVFileProduct.fieldThirtySix = "0";
+                    cSVFileProduct.fieldThirtySeven = "0";
+                    cSVFileProduct.fieldThirtyEight = "0";
+                    cSVFileProduct.fieldThirtyNine = "0";
+                    cSVFileProduct.fieldForty = "0";
+                    cSVFileProduct.fieldFortyOne = "0";
+                    cSVFileProduct.fieldFortyThree = "0";
+                    cSVFileProduct.fieldFortyFour = "0";
+                    cSVFileProduct.fieldFortyFive = "1";
+                    cSVFileProduct.fieldFortySix = "0";
+                    cSVFileProduct.fieldFortySeven = "0";
+                    cSVFileProduct.fieldFortyEight = "0";
+                    cSVFileProduct.fieldFortyNine = "0";
+                    cSVFileProduct.fieldFifty = "0";
+                    cSVFileProduct.fieldFiftyOne = "0";
+                    cSVFileProduct.fieldFiftyThree = "1";
+                    cSVFileProduct.fieldFiftyFour = "0";
+                    createdProducts.Add(cSVFileProduct);
+
+                    //check if the generated product codes exist in either the ProductCode or ParentCode fields in the ProductInfo table
+                    //build each product into a line for the csv file
+                }
+            }
+            this.EnableForm();
+            //write the csv file and prompt the user for the output location
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "CSV files (*.csv)|*.csv";
+                saveFileDialog.Title = "Save NewPLU.csv";
+                saveFileDialog.DefaultExt = "csv";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        // Get the file path from dialog
+                        string filePath = saveFileDialog.FileName;
+
+                        // Create file and write headers (property names)
+                        using (StreamWriter writer = new StreamWriter(filePath))
+                        {
+                            // Get properties of the type
+                            var properties = typeof(CSVFileProduct).GetProperties();
+
+                            // Write header row
+                            string headerLine = string.Join(",", properties.Select(p => p.Name));
+                            writer.WriteLine(headerLine);
+
+                            // Write each item as a CSV line
+                            foreach (var item in createdProducts)
+                            {
+                                // Get value of each property and join with commas
+                                string line = string.Join(",", properties.Select(p =>
+                                {
+                                    var value = p.GetValue(item);
+                                    return value != null ? value.ToString() : string.Empty;
+                                }));
+
+                                writer.WriteLine(line);
+                            }
+                        }
+
+                        MessageBox.Show($"Successfully exported {createdProducts.Count} items to CSV.",
+                                       "Export Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error exporting to CSV: {ex.Message}",
+                                       "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+
+
+
+
+            //second we check if the parentcode is valid
+            //third we generate product codes for each size link
+            //fourth we check if the generated product codes exist in either the ProductCode or ParentCode fields in the ProductInfo table
+            //fifth we build each product into a line for the csv file
+        }
+        private void DisableForm()
+        {
+            // Show a wait cursor
+            this.Cursor = Cursors.WaitCursor;
+
+            // Disable all controls on the form
+            foreach (Control control in this.Controls)
+            {
+                control.Enabled = false;
+            }
+
+            // Alternative approach: use the form's Enabled property
+            // this.Enabled = false;
+
+            // Optional: Show a progress indicator
+            // progressBar1.Visible = true;
+
+            // Force UI to update
+            Application.DoEvents();
+        }
+
+        private void EnableForm()
+        {
+            // Re-enable all controls on the form
+            foreach (Control control in this.Controls)
+            {
+                control.Enabled = true;
+            }
+
+            // Alternative approach: use the form's Enabled property
+            // this.Enabled = true;
+
+            // Hide any progress indicator
+            // progressBar1.Visible = false;
+
+            // Restore normal cursor
+            this.Cursor = Cursors.Default;
+        }
     }
 }

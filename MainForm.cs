@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Timer = System.Windows.Forms.Timer;
 
 namespace Manny_Tools_Claude
 {
@@ -17,60 +17,11 @@ namespace Manny_Tools_Claude
         private string _currentUsername;
         private bool _isDefaultPassword;
         private UserPermissions _permissionManager;
-        private Button btnLogout; // Added logout button
 
         //Timer to check connection status
         private System.Windows.Forms.Timer _connectionCheckTimer;
 
-        // Add to the constructor after other initialization
-        private void SetupConnectionTimer()
-        {
-            _connectionCheckTimer = new System.Windows.Forms.Timer();
-            _connectionCheckTimer.Interval = 60000; // Check every minute
-            _connectionCheckTimer.Tick += ConnectionCheckTimer_Tick;
-            _connectionCheckTimer.Start();
-        }
-
-        // Add this event handler to MainForm
-        private void ConnectionCheckTimer_Tick(object sender, EventArgs e)
-        {
-            if (!string.IsNullOrEmpty(_connectionString))
-            {
-                // Use async version to avoid UI freezing
-                _ = ConnectionStatusManager.Instance.CheckConnectionAsync(_connectionString);
-            }
-        }
-
-        // Don't forget to clean up
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (_connectionCheckTimer != null)
-                {
-                    _connectionCheckTimer.Stop();
-                    _connectionCheckTimer.Dispose();
-                }
-
-                // Unsubscribe from events
-                if (ConnectionStatusManager.Instance != null)
-                {
-                    ConnectionStatusManager.Instance.ConnectionStatusChanged -= ConnectionStatus_Changed;
-                }
-            }
-
-            base.Dispose(disposing);
-        }
-
-        // Form controls
-        private TabControl tabControl;
-        private TabPage tabViewSQL;
-        private TabPage tabCreateSizes;
-        private TabPage tabStockOnHand;
-        private TabPage tabOrbitSizing;
-        private Button btnSettings;
-        private Button btnUserManagement;
-        private ToolStripStatusLabel lblStatus;
+        // Form controls for content
         private SQL_Viewer_Schema sqlViewer;
         private CreateSizesForm sizesForm;
         private StockOnHandForm stockOnHandForm;
@@ -114,139 +65,78 @@ namespace Manny_Tools_Claude
             // Position the buttons initially
             PositionHeaderButtons();
 
+            //Initialize sql viewer form
+            InitializeSQLViewer();
+
+            // Initialize Create Sizes form
+            InitializeCreateSizes();
+
+            // Initialize Stock On Hand form
+            InitializeStockOnHand();
+
+            // Initialize Orbit Sizing Method form
+            InitializeOrbitSizing();
+
             // Check connection status
             if (!string.IsNullOrEmpty(_connectionString))
             {
                 ConnectionStatusManager.Instance.CheckConnection(_connectionString);
-                ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
+
+                // Force SQL Viewer to initialize immediately if the tab exists and user has permission
+                if (tabControl.TabPages.Contains(tabViewSQL) && sqlViewer != null)
+                {
+                    // Add a short delay to allow UI to initialize before loading tables
+                    Timer initTimer = new Timer();
+                    initTimer.Interval = 500; // Short delay to allow UI to initialize
+                    initTimer.Tick += (s, e) => {
+                        initTimer.Stop();
+                        initTimer.Dispose();
+
+                        // Make sure we have the latest connection string
+                        sqlViewer.UpdateConnectionString(_connectionString);
+                        // Explicitly load database tables
+                        sqlViewer.LoadDatabaseTables();
+                    };
+                    initTimer.Start();
+                }
             }
         }
 
-        private void InitializeComponent()
+        private void SetupConnectionTimer()
         {
-            this.Text = "Manny Tools";
-            this.Size = new Size(1200, 800);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Padding = new Padding(5);
-            this.BackColor = Color.FromArgb(240, 240, 240);
-            this.Icon = SystemIcons.Application;
+            _connectionCheckTimer = new System.Windows.Forms.Timer();
+            _connectionCheckTimer.Interval = 60000; // Check every minute
+            _connectionCheckTimer.Tick += ConnectionCheckTimer_Tick;
+            _connectionCheckTimer.Start();
+        }
 
-            // Create header panel with FlowLayout for better control positioning
-            Panel headerPanel = new Panel
+        private void ConnectionCheckTimer_Tick(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(_connectionString))
             {
-                Dock = DockStyle.Top,
-                Height = 60,
-                BackColor = Color.FromArgb(230, 230, 230),
-                Padding = new Padding(10)
-            };
+                // Check connection status
+                ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+            }
+        }
 
-            // Add title label
-            Label lblTitle = new Label
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                Text = "Manny Tools",
-                Font = new Font("Segoe UI", 16, FontStyle.Bold),
-                Location = new Point(15, 15),
-                AutoSize = true
-            };
-            headerPanel.Controls.Add(lblTitle);
+                if (_connectionCheckTimer != null)
+                {
+                    _connectionCheckTimer.Stop();
+                    _connectionCheckTimer.Dispose();
+                }
 
-            // Add settings button
-            btnSettings = new Button
-            {
-                Text = "Connection Settings",
-                Size = new Size(150, 30),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                FlatStyle = FlatStyle.Flat
-            };
-            btnSettings.FlatAppearance.BorderSize = 1;
-            btnSettings.Click += BtnSettings_Click;
-            headerPanel.Controls.Add(btnSettings);
+                // Unsubscribe from events
+                if (ConnectionStatusManager.Instance != null)
+                {
+                    ConnectionStatusManager.Instance.ConnectionStatusChanged -= ConnectionStatus_Changed;
+                }
+            }
 
-            // Add user management button
-            btnUserManagement = new Button
-            {
-                Text = "User Management",
-                Size = new Size(150, 30),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-                // Location will be set in PositionHeaderButtons
-            };
-            btnUserManagement.Click += BtnUserManagement_Click;
-            headerPanel.Controls.Add(btnUserManagement);
-
-            // Add logout button
-            btnLogout = new Button
-            {
-                Text = "Logout",
-                Size = new Size(100, 30),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-                // Location will be set in PositionHeaderButtons
-            };
-            btnLogout.Click += BtnLogout_Click;
-            headerPanel.Controls.Add(btnLogout);
-
-            // Create tab control
-            tabControl = new TabControl
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Point(15, 8)
-            };
-
-            // Create SQL Viewer tab
-            tabViewSQL = new TabPage
-            {
-                Text = "View SQL",
-                Padding = new Padding(5)
-            };
-
-            // Create Sizes tab
-            tabCreateSizes = new TabPage
-            {
-                Text = "Create Sizes",
-                Padding = new Padding(5)
-            };
-
-            // Create Stock On Hand tab
-            tabStockOnHand = new TabPage
-            {
-                Text = "Stock On Hand",
-                Padding = new Padding(5)
-            };
-
-            // Create Orbit Sizing tab
-            tabOrbitSizing = new TabPage
-            {
-                Text = "Orbit Sizing Method",
-                Padding = new Padding(5)
-            };
-
-            // Add tabs to tab control (will be filtered based on permissions)
-            tabControl.TabPages.Add(tabViewSQL);
-            tabControl.TabPages.Add(tabCreateSizes);
-            tabControl.TabPages.Add(tabStockOnHand);
-            tabControl.TabPages.Add(tabOrbitSizing);
-
-            // Create status bar
-            StatusStrip statusStrip = new StatusStrip();
-            lblStatus = new ToolStripStatusLabel
-            {
-                Text = $"Logged in as: {_currentUsername} | User Type: {_currentUserType.ToString()}"
-            };
-            statusStrip.Items.Add(lblStatus);
-
-            // Add controls to form
-            this.Controls.Add(tabControl);
-            this.Controls.Add(headerPanel);
-            this.Controls.Add(statusStrip);
-
-            // Initialize content for each tab
-            InitializeSQLViewer();
-            InitializeCreateSizes();
-            InitializeStockOnHand();
-            InitializeOrbitSizing();
-
-            // Handle form resize
-            this.Resize += MainForm_Resize;
-            this.SizeChanged += MainForm_SizeChanged;
+            base.Dispose(disposing);
         }
 
         private void InitializeSQLViewer()
@@ -258,6 +148,17 @@ namespace Manny_Tools_Claude
             };
 
             tabViewSQL.Controls.Add(sqlViewer);
+
+            // Force the SQL viewer to initialize if this is the selected tab
+            if (tabControl.SelectedTab == tabViewSQL)
+            {
+                // First ensure that connection status is up to date
+                ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+
+                // Send a fake visibility changed event by toggling visibility
+                sqlViewer.Visible = false;
+                sqlViewer.Visible = true;
+            }
         }
 
         private void InitializeCreateSizes()
@@ -383,12 +284,12 @@ namespace Manny_Tools_Claude
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "MannyTools");
 
-                string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+                string configPath = Path.Combine(appDataPath, "connection.cfg");
 
                 if (File.Exists(configPath))
                 {
-                    // Read and decrypt connection string
-                    _connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                    // Read connection string
+                    _connectionString = File.ReadAllText(configPath);
 
                     if (string.IsNullOrEmpty(_connectionString))
                     {
@@ -398,7 +299,6 @@ namespace Manny_Tools_Claude
                     }
 
                     ConnectionStatusManager.Instance.CheckConnection(_connectionString);
-                    ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
                     return true;
                 }
             }
@@ -440,7 +340,6 @@ namespace Manny_Tools_Claude
             {
                 stockOnHandForm.UpdateConnectionString(_connectionString);
             }
-
         }
 
         private void BtnSettings_Click(object sender, EventArgs e)
@@ -450,7 +349,6 @@ namespace Manny_Tools_Claude
 
         private void BtnUserManagement_Click(object sender, EventArgs e)
         {
-
             if (_currentUserType == UserType.SuperUser)
             {
                 using (UserManagementForm userManagementForm = new UserManagementForm(_currentUsername, _currentUserType))

@@ -1,5 +1,4 @@
-﻿using Manny_Tools_Claude;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -10,14 +9,6 @@ namespace Manny_Tools_Claude
 {
     public partial class ChangePasswordForm : Form
     {
-        private Label lblTitle;
-        private Label lblNewPassword;
-        private TextBox txtNewPassword;
-        private Label lblConfirmPassword;
-        private TextBox txtConfirmPassword;
-        private Button btnSave;
-        private Button btnCancel;
-
         private string _username;
         private bool _requiredChange;
 
@@ -32,88 +23,9 @@ namespace Manny_Tools_Claude
 
             if (_requiredChange)
             {
-                this.ControlBox = false; // No  close button if change is required
+                this.ControlBox = false; // No close button if change is required
                 btnCancel.Text = "Exit Application";
             }
-        }
-
-        private void InitializeComponent()
-        {
-            this.Size = new Size(400, 300);
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-
-            // Create title
-            lblTitle = new Label
-            {
-                Text = "Change Password",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Location = new Point(20, 20),
-                Size = new Size(350, 30)
-            };
-
-            // New Password field
-            lblNewPassword = new Label
-            {
-                Text = "New Password:",
-                Location = new Point(50, 80),
-                Size = new Size(120, 23)
-            };
-
-            txtNewPassword = new TextBox
-            {
-                Location = new Point(170, 80),
-                Size = new Size(180, 23),
-                PasswordChar = '*'
-            };
-
-            // Confirm Password field
-            lblConfirmPassword = new Label
-            {
-                Text = "Confirm Password:",
-                Location = new Point(50, 120),
-                Size = new Size(120, 23)
-            };
-
-            txtConfirmPassword = new TextBox
-            {
-                Location = new Point(170, 120),
-                Size = new Size(180, 23),
-                PasswordChar = '*'
-            };
-
-            // Buttons
-            btnSave = new Button
-            {
-                Text = "Save Password",
-                Location = new Point(170, 180),
-                Size = new Size(120, 30)
-            };
-            btnSave.Click += BtnSave_Click;
-
-            btnCancel = new Button
-            {
-                Text = "Cancel",
-                Location = new Point(300, 180),
-                Size = new Size(80, 30)
-            };
-            btnCancel.Click += BtnCancel_Click;
-
-            // Add controls to form
-            this.Controls.Add(lblTitle);
-            this.Controls.Add(lblNewPassword);
-            this.Controls.Add(txtNewPassword);
-            this.Controls.Add(lblConfirmPassword);
-            this.Controls.Add(txtConfirmPassword);
-            this.Controls.Add(btnSave);
-            this.Controls.Add(btnCancel);
-
-            // Set accept and cancel buttons
-            this.AcceptButton = btnSave;
-            this.CancelButton = btnCancel;
         }
 
         private void BtnSave_Click(object sender, EventArgs e)

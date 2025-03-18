@@ -1,166 +1,30 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Drawing;
-using Microsoft.Data.SqlClient;
 using System.IO;
-using System.Configuration;
+using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
 {
     public partial class SQL_Connection_Settings : Form
     {
-        // Form controls
-        private Label lblTitle;
-        private Label lblServer;
-        private TextBox txtServer;
-        private Label lblDatabase;
-        private TextBox txtDatabase;
-        private Label lblUsername;
-        private TextBox txtUsername;
-        private Label lblPassword;
-        private TextBox txtPassword;
-        private CheckBox chkIntegratedSecurity;
-        private Button btnTest;
-        private Button btnSave;
-        private Button btnCancel;
-
         // Event to notify that connection settings are saved
         public event EventHandler<ConnectionSettingsEventArgs> ConnectionSettingsSaved;
 
         public SQL_Connection_Settings()
         {
             InitializeComponent();
+            SetupEventHandlers();
             LoadSavedSettings();
         }
 
-        private void InitializeComponent()
+        private void SetupEventHandlers()
         {
-            this.Text = "Database Connection Settings";
-            this.Size = new Size(450, 350);
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-
-            // Create title
-            lblTitle = new Label
-            {
-                Text = "SQL Server Connection Settings",
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
-                Location = new Point(20, 20),
-                Size = new Size(400, 30)
-            };
-
-            // Server settings
-            lblServer = new Label
-            {
-                Text = "Server Name/IP:",
-                Location = new Point(20, 70),
-                Size = new Size(120, 23)
-            };
-
-            txtServer = new TextBox
-            {
-                Location = new Point(150, 70),
-                Size = new Size(250, 23)
-            };
-
-            // Database settings
-            lblDatabase = new Label
-            {
-                Text = "Database Name:",
-                Location = new Point(20, 110),
-                Size = new Size(120, 23)
-            };
-
-            txtDatabase = new TextBox
-            {
-                Location = new Point(150, 110),
-                Size = new Size(250, 23)
-            };
-
-            // Authentication settings
-            chkIntegratedSecurity = new CheckBox
-            {
-                Text = "Use Windows Authentication",
-                Location = new Point(150, 150),
-                Size = new Size(250, 23),
-                Checked = true
-            };
             chkIntegratedSecurity.CheckedChanged += ChkIntegratedSecurity_CheckedChanged;
-
-            // Username settings
-            lblUsername = new Label
-            {
-                Text = "Username:",
-                Location = new Point(20, 180),
-                Size = new Size(120, 23),
-                Enabled = false
-            };
-
-            txtUsername = new TextBox
-            {
-                Location = new Point(150, 180),
-                Size = new Size(250, 23),
-                Enabled = false
-            };
-
-            // Password settings
-            lblPassword = new Label
-            {
-                Text = "Password:",
-                Location = new Point(20, 220),
-                Size = new Size(120, 23),
-                Enabled = false
-            };
-
-            txtPassword = new TextBox
-            {
-                Location = new Point(150, 220),
-                Size = new Size(250, 23),
-                PasswordChar = '*',
-                Enabled = false
-            };
-
-            // Buttons
-            btnTest = new Button
-            {
-                Text = "Test Connection",
-                Location = new Point(20, 270),
-                Size = new Size(120, 30)
-            };
             btnTest.Click += BtnTest_Click;
-
-            btnSave = new Button
-            {
-                Text = "Save & Connect",
-                Location = new Point(150, 270),
-                Size = new Size(120, 30)
-            };
             btnSave.Click += BtnSave_Click;
-
-            btnCancel = new Button
-            {
-                Text = "Cancel",
-                Location = new Point(280, 270),
-                Size = new Size(120, 30)
-            };
             btnCancel.Click += BtnCancel_Click;
-
-            // Add all controls to the form
-            this.Controls.Add(lblTitle);
-            this.Controls.Add(lblServer);
-            this.Controls.Add(txtServer);
-            this.Controls.Add(lblDatabase);
-            this.Controls.Add(txtDatabase);
-            this.Controls.Add(chkIntegratedSecurity);
-            this.Controls.Add(lblUsername);
-            this.Controls.Add(txtUsername);
-            this.Controls.Add(lblPassword);
-            this.Controls.Add(txtPassword);
-            this.Controls.Add(btnTest);
-            this.Controls.Add(btnSave);
-            this.Controls.Add(btnCancel);
+            btnDiscover.Click += BtnDiscover_Click;
         }
 
         private void ChkIntegratedSecurity_CheckedChanged(object sender, EventArgs e)
@@ -177,14 +41,27 @@ namespace Manny_Tools_Claude
             if (ValidateInputs())
             {
                 string connectionString = BuildConnectionString();
-                if (DatabaseConnectionManager.Instance.TestConnection(connectionString))
+
+                lblStatus.Text = "Testing connection...";
+                lblStatus.ForeColor = Color.DarkBlue;
+                btnTest.Enabled = false;
+                btnSave.Enabled = false;
+                Application.DoEvents();
+
+                bool connectionSuccessful = TestConnection(connectionString);
+
+                btnTest.Enabled = true;
+                btnSave.Enabled = true;
+
+                if (connectionSuccessful)
                 {
-                    MessageBox.Show("Connection successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    lblStatus.Text = "Connection successful!";
+                    lblStatus.ForeColor = Color.Green;
                 }
                 else
                 {
-                    MessageBox.Show("Connection failed. Please check your settings and try again.",
-                        "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    lblStatus.Text = "Connection failed. Please check your settings and try again.";
+                    lblStatus.ForeColor = Color.Red;
                 }
             }
         }
@@ -194,8 +71,21 @@ namespace Manny_Tools_Claude
             if (ValidateInputs())
             {
                 string connectionString = BuildConnectionString();
-                if (DatabaseConnectionManager.Instance.TestConnection(connectionString))
+
+                lblStatus.Text = "Testing connection before saving...";
+                lblStatus.ForeColor = Color.DarkBlue;
+                btnTest.Enabled = false;
+                btnSave.Enabled = false;
+                Application.DoEvents();
+
+                bool connectionSuccessful = TestConnection(connectionString);
+
+                if (connectionSuccessful)
                 {
+                    lblStatus.Text = "Connection successful! Saving settings...";
+                    lblStatus.ForeColor = Color.Green;
+                    Application.DoEvents();
+
                     // Update and save connection string with the manager
                     if (DatabaseConnectionManager.Instance.UpdateConnectionString(connectionString))
                     {
@@ -207,14 +97,18 @@ namespace Manny_Tools_Claude
                     }
                     else
                     {
-                        MessageBox.Show("Failed to save connection settings. Please try again.",
-                            "Save Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        lblStatus.Text = "Failed to save connection settings. Please try again.";
+                        lblStatus.ForeColor = Color.Red;
+                        btnTest.Enabled = true;
+                        btnSave.Enabled = true;
                     }
                 }
                 else
                 {
-                    MessageBox.Show("Connection failed. Please check your settings and try again.",
-                        "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    lblStatus.Text = "Connection failed. Please check your settings and try again.";
+                    lblStatus.ForeColor = Color.Red;
+                    btnTest.Enabled = true;
+                    btnSave.Enabled = true;
                 }
             }
         }
@@ -249,6 +143,13 @@ namespace Manny_Tools_Claude
                     txtUsername.Focus();
                     return false;
                 }
+
+                if (string.IsNullOrWhiteSpace(txtPassword.Text))
+                {
+                    MessageBox.Show("Please enter a password.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    txtPassword.Focus();
+                    return false;
+                }
             }
 
             return true;
@@ -260,8 +161,7 @@ namespace Manny_Tools_Claude
             {
                 DataSource = txtServer.Text,
                 InitialCatalog = txtDatabase.Text,
-                TrustServerCertificate = true,
-                ConnectTimeout = 3 // Set 3-second timeout
+                TrustServerCertificate = true
             };
 
             if (chkIntegratedSecurity.Checked)
@@ -277,12 +177,46 @@ namespace Manny_Tools_Claude
             return builder.ConnectionString;
         }
 
+        private bool TestConnection(string connectionString)
+        {
+            try
+            {
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Optionally log the detailed exception for debugging
+                System.Diagnostics.Debug.WriteLine($"Connection Test Failed: {ex.Message}");
+                return false;
+            }
+        }
+
         private void LoadSavedSettings()
         {
             try
             {
-                // Get connection string from the manager
+                // First try to get connection string from the manager
                 string connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+
+                // If that's empty, try to load directly from file
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    string appDataPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "MannyTools");
+
+                    string configPath = Path.Combine(appDataPath, "connection.cfg");
+
+                    if (File.Exists(configPath))
+                    {
+                        // Read connection string
+                        connectionString = File.ReadAllText(configPath);
+                    }
+                }
 
                 if (!string.IsNullOrEmpty(connectionString))
                 {
@@ -294,6 +228,8 @@ namespace Manny_Tools_Claude
                     if (builder.IntegratedSecurity)
                     {
                         chkIntegratedSecurity.Checked = true;
+                        txtUsername.Text = string.Empty;
+                        txtPassword.Text = string.Empty;
                     }
                     else
                     {
@@ -301,11 +237,57 @@ namespace Manny_Tools_Claude
                         txtUsername.Text = builder.UserID;
                         txtPassword.Text = builder.Password;
                     }
+
+                    // Display informational message
+                    lblStatus.Text = "Loaded existing connection settings";
+                    lblStatus.ForeColor = Color.DarkBlue;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore errors during loading - default values will be used
+                // Log the error but continue with default/empty values
+                lblStatus.Text = "Could not load saved settings";
+                lblStatus.ForeColor = Color.Red;
+                System.Diagnostics.Debug.WriteLine($"Error loading saved settings: {ex.Message}");
+            }
+        }
+
+        private void BtnDiscover_Click(object sender, EventArgs e)
+        {
+            // Open the network discovery form
+            using (NetworkDiscoveryForm discoveryForm = new NetworkDiscoveryForm())
+            {
+                if (discoveryForm.ShowDialog() == DialogResult.OK)
+                {
+                    // User selected a connection, update the server and database fields
+                    string connectionString = discoveryForm.SelectedConnectionString;
+                    if (!string.IsNullOrEmpty(connectionString))
+                    {
+                        // Parse the connection string to get server and database info
+                        SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+
+                        // Update UI fields
+                        txtServer.Text = builder.DataSource;
+
+                        // If a database was specified, update the database field
+                        if (!string.IsNullOrEmpty(builder.InitialCatalog))
+                        {
+                            txtDatabase.Text = builder.InitialCatalog;
+                        }
+
+                        // Update authentication mode
+                        chkIntegratedSecurity.Checked = builder.IntegratedSecurity;
+                        if (!builder.IntegratedSecurity)
+                        {
+                            txtUsername.Text = builder.UserID;
+                            // Note: password isn't returned in the connection string for security reasons
+                        }
+
+                        // Show success message
+                        lblStatus.Text = "Server settings imported from discovery!";
+                        lblStatus.ForeColor = Color.Green;
+                    }
+                }
             }
         }
     }

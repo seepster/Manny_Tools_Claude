@@ -10,12 +10,6 @@ namespace Manny_Tools_Claude
     {
         private List<int> _selectedColumns;
         private Dictionary<int, string> _columnMap;
-
-        // Form controls
-        private Label lblTitle;
-        private Button btnSave;
-        private Button btnCancel;
-        private FlowLayoutPanel panelCheckboxes;
         private Dictionary<int, CheckBox> _checkboxes = new Dictionary<int, CheckBox>();
 
         public List<int> SelectedColumns => _selectedColumns;
@@ -27,85 +21,6 @@ namespace Manny_Tools_Claude
 
             InitializeComponent();
             LoadColumnCheckboxes();
-        }
-
-        private void InitializeComponent()
-        {
-            this.Text = "Select Visible Columns";
-            this.Size = new Size(400, 500);
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.BackColor = SystemColors.Control;
-
-            // Create title label
-            lblTitle = new Label
-            {
-                Text = "Select Columns to Display",
-                Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                Dock = DockStyle.Top,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Height = 40
-            };
-
-            // Create panel for checkboxes
-            panelCheckboxes = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                AutoScroll = true,
-                Padding = new Padding(20, 10, 20, 10)
-            };
-
-            // Create save button
-            btnSave = new Button
-            {
-                Text = "Save",
-                Dock = DockStyle.Bottom,
-                Height = 40
-            };
-            btnSave.Click += BtnSave_Click;
-
-            // Create cancel button
-            btnCancel = new Button
-            {
-                Text = "Cancel",
-                Dock = DockStyle.Bottom,
-                Height = 30
-            };
-            btnCancel.Click += BtnCancel_Click;
-
-            // Create layout container
-            Panel panelButtons = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 80,
-                Padding = new Padding(10)
-            };
-
-            // Add buttons to panel
-            btnSave.Location = new Point(panelButtons.Width / 2 - btnSave.Width - 5, 10);
-            btnSave.Size = new Size(100, 35);
-            btnSave.Anchor = AnchorStyles.None;
-
-            btnCancel.Location = new Point(panelButtons.Width / 2 + 5, 10);
-            btnCancel.Size = new Size(100, 35);
-            btnCancel.Anchor = AnchorStyles.None;
-
-            panelButtons.Controls.Add(btnSave);
-            panelButtons.Controls.Add(btnCancel);
-
-            // Add controls to form
-            this.Controls.Add(panelCheckboxes);
-            this.Controls.Add(panelButtons);
-            this.Controls.Add(lblTitle);
-
-            // Set button positions
-            panelButtons.Resize += (s, e) => {
-                btnSave.Location = new Point(panelButtons.Width / 2 - btnSave.Width - 5, 10);
-                btnCancel.Location = new Point(panelButtons.Width / 2 + 5, 10);
-            };
         }
 
         private void LoadColumnCheckboxes()

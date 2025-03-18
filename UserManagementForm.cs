@@ -122,7 +122,7 @@ namespace Manny_Tools_Claude
                 string usersFile = LoginForm.GetUsersFilePath();
                 if (File.Exists(usersFile))
                 {
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                    string[] lines = DataEncryptionHelper.ReadLines(usersFile);
                     if (lines != null)
                     {
                         foreach (string line in lines)
@@ -238,7 +238,7 @@ namespace Manny_Tools_Claude
                     try
                     {
                         string usersFile = LoginForm.GetUsersFilePath();
-                        string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                        string[] lines = DataEncryptionHelper.ReadLines(usersFile);
 
                         if (lines != null)
                         {
@@ -252,7 +252,7 @@ namespace Manny_Tools_Claude
                                 }
                             }
 
-                            DataEncryptionHelper.WriteEncryptedLines(usersFile, newLines.ToArray());
+                            DataEncryptionHelper.WriteLines(usersFile, newLines.ToArray());
 
                             // Try to delete permissions too
                             try

@@ -12,6 +12,7 @@ namespace Manny_Tools_Claude
     {
         // Singleton instance
         private static DatabaseConnectionManager _instance;
+        private static readonly object _lock = new object();
 
         // Connection string
         private string _connectionString;
@@ -26,7 +27,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Gets the singleton instance
+        /// Gets the singleton instance with thread safety
         /// </summary>
         public static DatabaseConnectionManager Instance
         {
@@ -34,7 +35,13 @@ namespace Manny_Tools_Claude
             {
                 if (_instance == null)
                 {
-                    _instance = new DatabaseConnectionManager();
+                    lock (_lock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new DatabaseConnectionManager();
+                        }
+                    }
                 }
                 return _instance;
             }
@@ -64,10 +71,10 @@ namespace Manny_Tools_Claude
 
                 if (File.Exists(configPath))
                 {
-                    // Read and decrypt connection string
-                    string connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                    // Read connection string
+                    string connectionString = File.ReadAllText(configPath);
 
-                    // Test the connection
+                    // Test the connection 
                     if (!string.IsNullOrEmpty(connectionString) && TestConnection(connectionString))
                     {
                         _connectionString = connectionString;
@@ -115,8 +122,8 @@ namespace Manny_Tools_Claude
                 Directory.CreateDirectory(appDataPath);
                 string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
 
-                // Encrypt and save connection string
-                DataEncryptionHelper.WriteEncryptedFile(configPath, connectionString);
+                // Save connection string
+                File.WriteAllText(configPath, connectionString);
 
                 // Update local connection string
                 _connectionString = connectionString;
@@ -147,70 +154,25 @@ namespace Manny_Tools_Claude
                 return false;
             }
 
-            bool connectionSuccessful = false;
-            bool timeoutOccurred = false;
-            Exception connectionException = null;
-
-            // Create a timer to enforce the 3-second timeout
-            System.Threading.Timer timeoutTimer = null;
-
-            // Use ManualResetEvent to properly wait for either connection success or timeout
-            using (var connectionCompleted = new System.Threading.ManualResetEvent(false))
+            try
             {
-                // Create the timeout timer
-                timeoutTimer = new System.Threading.Timer(_ =>
-                {
-                    timeoutOccurred = true;
-                    connectionCompleted.Set(); // Signal to continue execution
-                }, null, 3000, System.Threading.Timeout.Infinite); // 3000ms = 3 seconds
-
-                // Try to establish the connection in a separate thread
-                System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                using (var connection = CreateConnection(connectionString))
                 {
                     try
                     {
-                        using (var connection = new SqlConnection(connectionString))
-                        {
-                            connection.Open();
-                            connection.Close();
-                            connectionSuccessful = true;
-                        }
+                        connection.Open();
+                        return true;
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        connectionException = ex;
+                        return false;
                     }
-
-                });
-
-                // Wait for either the connection to complete or the timeout to occur
-                connectionCompleted.WaitOne();
+                }
             }
-
-            // Dispose of the timer
-            timeoutTimer?.Dispose();
-
-            // If we timed out, log the event
-            if (timeoutOccurred && !connectionSuccessful)
+            catch
             {
-                // Optionally log the timeout
-                System.Diagnostics.Debug.WriteLine("Database connection attempt timed out after 3 seconds");
+                return false;
             }
-            else if (connectionException != null)
-            {
-                // Optionally log the exception
-                System.Diagnostics.Debug.WriteLine($"Database connection error: {connectionException.Message}");
-            }
-
-            return connectionSuccessful;
-        }
-
-        /// <summary>
-        /// Raises the ConnectionChanged event
-        /// </summary>
-        protected virtual void OnConnectionChanged(ConnectionChangedEventArgs e)
-        {
-            ConnectionChanged?.Invoke(this, e);
         }
 
         /// <summary>
@@ -231,9 +193,18 @@ namespace Manny_Tools_Claude
 
             try
             {
-                var connection = CreateConnectionWithTimeout(_connectionString);
-                connection.Open();
-                return connection;
+                var connection = CreateConnection(_connectionString);
+
+                try
+                {
+                    connection.Open();
+                    return connection;
+                }
+                catch
+                {
+                    connection.Dispose();
+                    return null;
+                }
             }
             catch
             {
@@ -258,30 +229,41 @@ namespace Manny_Tools_Claude
                 }
             }
 
+            SqlConnection connection = null;
+
             try
             {
-                using (var connection = CreateConnectionWithTimeout(_connectionString))
-                {
-                    connection.Open();
-                    action(connection);
-                    return true;
-                }
+                connection = CreateConnection(_connectionString);
+                connection.Open();
+                action(connection);
+                return true;
             }
             catch
             {
                 return false;
             }
+            finally
+            {
+                connection?.Dispose();
+            }
         }
-        public static SqlConnection CreateConnectionWithTimeout(string connectionString)
+
+        /// <summary>
+        /// Creates a SQL connection
+        /// </summary>
+        /// <param name="connectionString">The connection string</param>
+        /// <returns>A configured SqlConnection object (not yet opened)</returns>
+        public static SqlConnection CreateConnection(string connectionString)
         {
-            // Create a SqlConnectionStringBuilder to safely modify the connection string
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+            return new SqlConnection(connectionString);
+        }
 
-            // Set 3-second timeout
-            builder.ConnectTimeout = 3;
-
-            // Create and return connection with the modified connection string
-            return new SqlConnection(builder.ConnectionString);
+        /// <summary>
+        /// Raises the ConnectionChanged event
+        /// </summary>
+        protected virtual void OnConnectionChanged(ConnectionChangedEventArgs e)
+        {
+            ConnectionChanged?.Invoke(this, e);
         }
     }
 
@@ -297,7 +279,4 @@ namespace Manny_Tools_Claude
             ConnectionString = connectionString;
         }
     }
-
-
-
 }

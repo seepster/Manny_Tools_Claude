@@ -164,7 +164,7 @@ namespace Manny_Tools_Claude
                 if (File.Exists(usersFile))
                 {
                     // Read and decrypt the users file
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                    string[] lines = DataEncryptionHelper.ReadLines(usersFile);
                     if (lines == null)
                         return;
 
@@ -249,7 +249,7 @@ namespace Manny_Tools_Claude
                 if (File.Exists(usersFile))
                 {
                     // Read and decrypt the users file
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                    string[] lines = DataEncryptionHelper.ReadLines(usersFile);
                     if (lines != null)
                     {
                         foreach (string line in lines)
@@ -289,7 +289,7 @@ namespace Manny_Tools_Claude
             if (File.Exists(usersFile))
             {
                 // Read and decrypt the existing users file
-                string[] existingLines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                string[] existingLines = DataEncryptionHelper.ReadLines(usersFile);
                 if (existingLines != null)
                 {
                     foreach (string line in existingLines)
@@ -330,7 +330,7 @@ namespace Manny_Tools_Claude
             }
 
             // Write encrypted data back to file
-            DataEncryptionHelper.WriteEncryptedLines(usersFile, lines.ToArray());
+            DataEncryptionHelper.WriteLines(usersFile, lines.ToArray());
         }
     }
 }

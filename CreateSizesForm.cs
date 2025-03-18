@@ -45,6 +45,7 @@ namespace Manny_Tools_Claude
             string queryForProductSize = "select Number, Description from ProductSize";
             try
             {
+                DatabaseConnectionManager.Instance.LoadConnectionString();
                 productSizes = SQL_Get_Generic_List.ExecuteQuery<CreateSizesProductSizeItem>(DatabaseConnectionManager.Instance.ConnectionString, queryForProductSize, null);
 
                 foreach (CreateSizesProductSizeItem item in productSizes)

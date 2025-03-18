@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Drawing;
 using System.Data;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Dapper;
 using System.Linq;
 using System.IO;
-using System.Threading;
 
 namespace Manny_Tools_Claude
 {
@@ -19,9 +17,6 @@ namespace Manny_Tools_Claude
         private string _connectionString;
         private List<int> _visibleColumns = new List<int>();
         private string _currentUsername = "user";
-
-        // Standard timeout (5 seconds)
-        private const int CONNECTION_TIMEOUT_SECONDS = 5;
 
         // Form controls
         private Label lblTitle;
@@ -116,12 +111,12 @@ namespace Manny_Tools_Claude
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "MannyTools");
 
-                string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
+                string configPath = Path.Combine(appDataPath, "connection.cfg");
 
                 if (File.Exists(configPath))
                 {
-                    // Read and decrypt connection string
-                    _connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                    // Read connection string
+                    _connectionString = File.ReadAllText(configPath);
 
                     // Test the connection
                     if (!string.IsNullOrEmpty(_connectionString))
@@ -291,18 +286,18 @@ namespace Manny_Tools_Claude
                 e.SuppressKeyPress = true;
 
                 // Trigger the Get SOH button
-                PerformSearchAsync();
+                PerformSearch();
             }
         }
 
         private void BtnGetSOH_Click(object sender, EventArgs e)
         {
-            PerformSearchAsync();
+            PerformSearch();
         }
 
         // Extract search logic to a separate method so it can be called
         // from both button click and Enter key press
-        private async void PerformSearchAsync()
+        private void PerformSearch()
         {
             // If connection string is empty, try loading it again
             if (string.IsNullOrWhiteSpace(_connectionString))
@@ -332,7 +327,7 @@ namespace Manny_Tools_Claude
                 Application.DoEvents();
 
                 // Test connection before proceeding
-                bool connectionValid = await TestConnectionAsync();
+                bool connectionValid = TestConnection();
                 if (!connectionValid)
                 {
                     lblSearchStatus.Text = "Connection failed. Please check settings.";
@@ -341,8 +336,8 @@ namespace Manny_Tools_Claude
                     return;
                 }
 
-                // Validate product code with timeout
-                bool productValid = await ValidateProductCodeAsync(productCode);
+                // Validate product code
+                bool productValid = ValidateProductCode(productCode);
                 if (!productValid)
                 {
                     lblSearchStatus.Text = "Invalid PLU code. Please try again.";
@@ -353,9 +348,9 @@ namespace Manny_Tools_Claude
                 }
 
                 // Get product data
-                string productDescription = await GetDescriptionAsync(productCode);
-                double sellPrice1 = await GetSellPriceOneAsync(productCode);
-                List<double> stockNumbers = await GetStockOnHandResultsAsync(productCode);
+                string productDescription = GetDescription(productCode);
+                double sellPrice1 = GetSellPriceOne(productCode);
+                List<double> stockNumbers = GetStockOnHandResults(productCode);
 
                 // Calculate derived values
                 double purchases = stockNumbers[0];
@@ -437,24 +432,14 @@ namespace Manny_Tools_Claude
 
         #region Data Access Methods
 
-        private async Task<bool> TestConnectionAsync()
+        private bool TestConnection()
         {
             try
             {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
-                    {
-                        try
-                        {
-                            await connection.OpenAsync(cts.Token);
-                            return true;
-                        }
-                        catch
-                        {
-                            return false;
-                        }
-                    }
+                    connection.Open();
+                    return true;
                 }
             }
             catch
@@ -463,7 +448,7 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<bool> ValidateProductCodeAsync(string productCode)
+        private bool ValidateProductCode(string productCode)
         {
             if (string.IsNullOrEmpty(productCode))
                 return false;
@@ -472,17 +457,14 @@ namespace Manny_Tools_Claude
             {
                 string queryCheckPLUValid = $"SELECT ProductCode FROM ProductInfo WHERE ProductCode = @ProductCode";
 
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
-                    {
-                        await connection.OpenAsync(cts.Token);
-                        var result = await connection.QueryFirstOrDefaultAsync<string>(
-                            queryCheckPLUValid,
-                            new { ProductCode = productCode });
+                    connection.Open();
+                    var result = connection.QueryFirstOrDefault<string>(
+                        queryCheckPLUValid,
+                        new { ProductCode = productCode });
 
-                        return !string.IsNullOrEmpty(result);
-                    }
+                    return !string.IsNullOrEmpty(result);
                 }
             }
             catch
@@ -491,7 +473,7 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<List<double>> GetStockOnHandResultsAsync(string productCode)
+        private List<double> GetStockOnHandResults(string productCode)
         {
             // Define all the necessary stock queries
             string query1 = @"
@@ -534,28 +516,25 @@ namespace Manny_Tools_Claude
 
             try
             {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
+                    connection.Open();
+
+                    foreach (string query in queries)
                     {
-                        await connection.OpenAsync(cts.Token);
+                        object result = connection.ExecuteScalar(query, new { ProductCode = productCode });
 
-                        foreach (string query in queries)
+                        if (result == null || result == DBNull.Value)
                         {
-                            object result = await connection.ExecuteScalarAsync(query, new { ProductCode = productCode });
-
-                            if (result == null || result == DBNull.Value)
-                            {
-                                results.Add(0);
-                            }
-                            else if (double.TryParse(result.ToString(), out double value))
-                            {
-                                results.Add(value);
-                            }
-                            else
-                            {
-                                results.Add(0);
-                            }
+                            results.Add(0);
+                        }
+                        else if (double.TryParse(result.ToString(), out double value))
+                        {
+                            results.Add(value);
+                        }
+                        else
+                        {
+                            results.Add(0);
                         }
                     }
                 }
@@ -569,22 +548,19 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<string> GetDescriptionAsync(string productCode)
+        private string GetDescription(string productCode)
         {
             try
             {
                 string query = "SELECT Description FROM ProductInfo WHERE ProductCode = @ProductCode";
 
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
-                    {
-                        await connection.OpenAsync(cts.Token);
-                        string description = await connection.QueryFirstOrDefaultAsync<string>(
-                            query, new { ProductCode = productCode });
+                    connection.Open();
+                    string description = connection.QueryFirstOrDefault<string>(
+                        query, new { ProductCode = productCode });
 
-                        return string.IsNullOrEmpty(description) ? "No Description available" : description;
-                    }
+                    return string.IsNullOrEmpty(description) ? "No Description available" : description;
                 }
             }
             catch
@@ -593,22 +569,19 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private async Task<double> GetSellPriceOneAsync(string productCode)
+        private double GetSellPriceOne(string productCode)
         {
             try
             {
                 string query = "SELECT SellingPriceIncl FROM ProductInfo WHERE ProductCode = @ProductCode";
 
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
                 {
-                    using (var connection = DatabaseConnectionManager.CreateConnection(_connectionString))
-                    {
-                        await connection.OpenAsync(cts.Token);
-                        var result = await connection.QueryFirstOrDefaultAsync<double?>(
-                            query, new { ProductCode = productCode });
+                    connection.Open();
+                    var result = connection.QueryFirstOrDefault<double?>(
+                        query, new { ProductCode = productCode });
 
-                        return result ?? 0;
-                    }
+                    return result ?? 0;
                 }
             }
             catch
@@ -628,7 +601,7 @@ namespace Manny_Tools_Claude
                 string filePath = GetColumnSettingsFilePath(_currentUsername);
                 if (File.Exists(filePath))
                 {
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                    string[] lines = File.ReadAllLines(filePath);
                     _visibleColumns.Clear();
 
                     if (lines != null)
@@ -643,11 +616,11 @@ namespace Manny_Tools_Claude
                     }
                     else
                     {
-                        // If decryption fails, use default columns file
+                        // If file read fails, use default columns file
                         filePath = GetColumnSettingsFilePath();
                         if (File.Exists(filePath))
                         {
-                            lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                            lines = File.ReadAllLines(filePath);
                             if (lines != null)
                             {
                                 foreach (string line in lines)
@@ -677,7 +650,7 @@ namespace Manny_Tools_Claude
                     filePath = GetColumnSettingsFilePath();
                     if (File.Exists(filePath))
                     {
-                        string[] lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                        string[] lines = File.ReadAllLines(filePath);
                         _visibleColumns.Clear();
 
                         if (lines != null)

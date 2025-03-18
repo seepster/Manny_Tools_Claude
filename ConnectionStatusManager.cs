@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
 {
@@ -22,9 +21,6 @@ namespace Manny_Tools_Claude
         // Singleton instance
         private static ConnectionStatusManager _instance;
         private static readonly object _lock = new object();
-
-        // Shorter timeout for connection checks (3 seconds)
-        private const int CONNECTION_CHECK_TIMEOUT = 10000;
 
         // Flag to track if a check is in progress
         private bool _checkInProgress = false;
@@ -56,7 +52,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Checks the database connection status with timeout protection
+        /// Checks the database connection status
         /// </summary>
         /// <param name="connectionString">The connection string to test</param>
         public void CheckConnection(string connectionString)
@@ -74,50 +70,30 @@ namespace Manny_Tools_Claude
             // Set the flag to avoid concurrent checks
             _checkInProgress = true;
 
-            // Run connection check in background
-            Task.Run(() =>
+            try
             {
-                try
+                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
                 {
-                    using (var cts = new CancellationTokenSource(CONNECTION_CHECK_TIMEOUT))
+                    try
                     {
-                        try
-                        {
-                            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
-                            {
-                                try
-                                {
-                                    // Try to open with cancelation token
-                                    connection.Open();
-                                    UpdateConnectionStatus(true, string.Empty);
-                                }
-                                catch (Exception ex)
-                                {
-                                    UpdateConnectionStatus(false, ex.Message);
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            UpdateConnectionStatus(false, ex.Message);
-                        }
+                        connection.Open();
+                        UpdateConnectionStatus(true, string.Empty);
+                    }
+                    catch (Exception ex)
+                    {
+                        UpdateConnectionStatus(false, ex.Message);
                     }
                 }
-                catch (TaskCanceledException)
-                {
-                    // Connection timed out
-                    UpdateConnectionStatus(false, "Connection timed out");
-                }
-                catch (Exception ex)
-                {
-                    UpdateConnectionStatus(false, ex.Message);
-                }
-                finally
-                {
-                    // Clear the flag when done
-                    _checkInProgress = false;
-                }
-            });
+            }
+            catch (Exception ex)
+            {
+                UpdateConnectionStatus(false, ex.Message);
+            }
+            finally
+            {
+                // Clear the flag when done
+                _checkInProgress = false;
+            }
         }
 
         /// <summary>

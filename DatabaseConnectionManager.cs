@@ -1,15 +1,12 @@
 ﻿using System;
 using System.IO;
 using System.Windows.Forms;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
 {
     /// <summary>
     /// Centralized manager for database connections across the application
-    /// Handles connection creation, testing, and management with standardized timeouts
     /// </summary>
     public class DatabaseConnectionManager
     {
@@ -19,9 +16,6 @@ namespace Manny_Tools_Claude
 
         // Connection string
         private string _connectionString;
-
-        // Standard timeout for all connections (reduced to 10 seconds)
-        private const int CONNECTION_TIMEOUT_SECONDS = 10;
 
         // Events
         public event EventHandler<ConnectionChangedEventArgs> ConnectionChanged;
@@ -77,16 +71,16 @@ namespace Manny_Tools_Claude
 
                 if (File.Exists(configPath))
                 {
-                    // Read and decrypt connection string
-                    string connectionString = DataEncryptionHelper.ReadEncryptedFile(configPath);
+                    // Read connection string
+                    string connectionString = File.ReadAllText(configPath);
 
-                    // Test the connection with short timeout 
-                    if (!string.IsNullOrEmpty(connectionString) && TestConnectionAsync(connectionString).Wait(2000))
+                    // Test the connection 
+                    if (!string.IsNullOrEmpty(connectionString) && TestConnection(connectionString))
                     {
                         _connectionString = connectionString;
 
-                        // Update connection status manager asynchronously
-                        Task.Run(() => ConnectionStatusManager.Instance.CheckConnection(_connectionString));
+                        // Update connection status manager
+                        ConnectionStatusManager.Instance.CheckConnection(_connectionString);
 
                         // Notify listeners
                         OnConnectionChanged(new ConnectionChangedEventArgs(_connectionString));
@@ -129,13 +123,13 @@ namespace Manny_Tools_Claude
                 string configPath = Path.Combine(appDataPath, DataEncryptionHelper.ConfigFiles.ConnectionFile);
 
                 // Save connection string
-                DataEncryptionHelper.WriteEncryptedFile(configPath, connectionString);
+                File.WriteAllText(configPath, connectionString);
 
                 // Update local connection string
                 _connectionString = connectionString;
 
-                // Update connection status manager asynchronously
-                Task.Run(() => ConnectionStatusManager.Instance.CheckConnection(_connectionString));
+                // Update connection status manager
+                ConnectionStatusManager.Instance.CheckConnection(_connectionString);
 
                 // Notify listeners
                 OnConnectionChanged(new ConnectionChangedEventArgs(_connectionString));
@@ -149,43 +143,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Tests a connection string asynchronously with a short timeout
-        /// </summary>
-        /// <param name="connectionString">The connection string to test</param>
-        /// <returns>True if connection successful, false otherwise</returns>
-        public async Task<bool> TestConnectionAsync(string connectionString)
-        {
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                return false;
-            }
-
-            try
-            {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
-                {
-                    using (var connection = CreateConnection(connectionString))
-                    {
-                        try
-                        {
-                            await connection.OpenAsync(cts.Token);
-                            return true;
-                        }
-                        catch
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Tests a connection string with a short timeout
+        /// Tests a connection string
         /// </summary>
         /// <param name="connectionString">The connection string to test</param>
         /// <returns>True if connection successful, false otherwise</returns>
@@ -198,16 +156,18 @@ namespace Manny_Tools_Claude
 
             try
             {
-                // Use a task with a timeout to avoid blocking
-                var task = TestConnectionAsync(connectionString);
-
-                // Wait for completion, but with a timeout
-                if (task.Wait(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)))
+                using (var connection = CreateConnection(connectionString))
                 {
-                    return task.Result;
+                    try
+                    {
+                        connection.Open();
+                        return true;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
                 }
-
-                return false; // Timeout
             }
             catch
             {
@@ -216,7 +176,7 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Gets a new connection to the database with timeout control
+        /// Gets a new connection to the database
         /// </summary>
         /// <returns>An open SqlConnection or null if connection fails</returns>
         public SqlConnection GetConnection()
@@ -235,28 +195,16 @@ namespace Manny_Tools_Claude
             {
                 var connection = CreateConnection(_connectionString);
 
-                // Use a task with a timeout to avoid blocking UI
-                var openTask = Task.Run(() => {
-                    try
-                    {
-                        connection.Open();
-                        return true;
-                    }
-                    catch
-                    {
-                        return false;
-                    }
-                });
-
-                // Wait with a timeout
-                if (openTask.Wait(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)) && openTask.Result)
+                try
                 {
+                    connection.Open();
                     return connection;
                 }
-
-                // If we couldn't open the connection
-                connection.Dispose();
-                return null;
+                catch
+                {
+                    connection.Dispose();
+                    return null;
+                }
             }
             catch
             {
@@ -286,26 +234,7 @@ namespace Manny_Tools_Claude
             try
             {
                 connection = CreateConnection(_connectionString);
-
-                // Open with timeout
-                var openTask = Task.Run(() => {
-                    try
-                    {
-                        connection.Open();
-                        return true;
-                    }
-                    catch
-                    {
-                        return false;
-                    }
-                });
-
-                if (!openTask.Wait(TimeSpan.FromSeconds(CONNECTION_TIMEOUT_SECONDS)) || !openTask.Result)
-                {
-                    // Failed to open within timeout or connection failed
-                    return false;
-                }
-
+                connection.Open();
                 action(connection);
                 return true;
             }
@@ -320,20 +249,13 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Creates a SQL connection with the standard timeout
+        /// Creates a SQL connection
         /// </summary>
         /// <param name="connectionString">The connection string</param>
         /// <returns>A configured SqlConnection object (not yet opened)</returns>
         public static SqlConnection CreateConnection(string connectionString)
         {
-            // Create a SqlConnectionStringBuilder to safely modify the connection string
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
-
-            // Set standard timeout
-            builder.ConnectTimeout = CONNECTION_TIMEOUT_SECONDS;
-
-            // Create and return connection with the modified connection string
-            return new SqlConnection(builder.ConnectionString);
+            return new SqlConnection(connectionString);
         }
 
         /// <summary>

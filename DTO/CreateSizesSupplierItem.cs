@@ -8,11 +8,11 @@ namespace Manny_Tools_Claude.DTO
 {
     public class CreateSizesSupplierItem
     {
-        public string SupplierNumber { get; set; }
-        public string SupplierName { get; set; }
+        public string AccountNumber { get; set; }
+        public string AccountName { get; set; }
         public override string ToString()
         {
-            return $"{SupplierNumber} - {SupplierName}";
+            return $"{AccountNumber} - {AccountName}";
         }
     }
 }

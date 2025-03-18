@@ -8,9 +8,6 @@ namespace Manny_Tools_Claude
 {
     public partial class SQL_Connection_Settings : Form
     {
-        // Standard timeout (5 seconds)
-        private const int CONNECTION_TIMEOUT_SECONDS = 5;
-
         // Event to notify that connection settings are saved
         public event EventHandler<ConnectionSettingsEventArgs> ConnectionSettingsSaved;
 
@@ -164,8 +161,7 @@ namespace Manny_Tools_Claude
             {
                 DataSource = txtServer.Text,
                 InitialCatalog = txtDatabase.Text,
-                TrustServerCertificate = true,
-                ConnectTimeout = CONNECTION_TIMEOUT_SECONDS // Set 5-second timeout
+                TrustServerCertificate = true
             };
 
             if (chkIntegratedSecurity.Checked)
@@ -239,7 +235,7 @@ namespace Manny_Tools_Claude
                     {
                         chkIntegratedSecurity.Checked = false;
                         txtUsername.Text = builder.UserID;
-                        txtPassword.Text = string.Empty; // Do not store passwords
+                        txtPassword.Text = builder.Password;
                     }
 
                     // Display informational message

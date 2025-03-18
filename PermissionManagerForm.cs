@@ -151,7 +151,7 @@ namespace Manny_Tools_Claude
                 string usersFile = LoginForm.GetUsersFilePath();
                 if (File.Exists(usersFile))
                 {
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(usersFile);
+                    string[] lines = DataEncryptionHelper.ReadLines(usersFile);
                     if (lines != null)
                     {
                         _allUsers.Clear();
@@ -234,7 +234,7 @@ namespace Manny_Tools_Claude
                 string filePath = GetColumnSettingsFilePath(_username);
                 if (File.Exists(filePath))
                 {
-                    string[] lines = DataEncryptionHelper.ReadEncryptedLines(filePath);
+                    string[] lines = DataEncryptionHelper.ReadLines(filePath);
                     _visibleColumns.Clear();
 
                     if (lines != null)
@@ -302,7 +302,7 @@ namespace Manny_Tools_Claude
                     Directory.CreateDirectory(directory);
                 }
 
-                DataEncryptionHelper.WriteEncryptedLines(filePath,
+                DataEncryptionHelper.WriteLines(filePath,
                     _visibleColumns.Select(x => x.ToString()).ToArray());
 
                 // Store in memory for current session

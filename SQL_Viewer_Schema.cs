@@ -552,11 +552,11 @@ namespace Manny_Tools_Claude
             };
         }
 
-        /// &lt;summary&gt;
+        /// <summary>
         /// Determines if a column is likely to contain monetary values based on its name
-        /// &lt;/summary&gt;
-        /// &lt;param name="columnName"&gt;The name of the column to check&lt;/param&gt;
-        /// &lt;returns&gt;True if the column likely contains monetary values&lt;/returns&gt;
+        /// </summary>
+        /// <param name="columnName">The name of the column to check</param>
+        /// <returns>True if the column likely contains monetary values</returns>
         private bool IsMonetaryColumn(string columnName)
         {
             if (string.IsNullOrEmpty(columnName))
@@ -609,10 +609,10 @@ namespace Manny_Tools_Claude
             return false;
         }
 
-        /// &lt;summary&gt;
+        /// <summary>
         /// Formats the DataGridView columns based on their content type
-        /// &lt;/summary&gt;
-        /// &lt;param name="gridView"&gt;The DataGridView to format&lt;/param&gt;
+        /// </summary>
+        /// <param name="gridView">The DataGridView to format</param>
         private void FormatDataGridViewColumns(DataGridView gridView)
         {
             if (gridView == null || gridView.Columns.Count == 0)

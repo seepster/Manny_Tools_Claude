@@ -8,12 +8,13 @@ namespace Manny_Tools_Claude.DTO
 {
     public class CreateSizesProductSizeItem
     {
+        public int OID { get; set; }
         public int Number { get; set; }
         public string Description { get; set; }
 
         public override string ToString()
         {
-            return $"{Number} {Description}";
+            return $"{OID} {Description}";
         }
     }
 }

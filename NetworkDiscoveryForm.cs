@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Net;
 using Microsoft.Data.SqlClient;
@@ -215,8 +214,11 @@ namespace Manny_Tools_Claude
             lblStatus.Text = $"Starting network discovery from {ipAddress}...";
             toolStripStatusLabel.Text = $"Starting network discovery from {ipAddress}...";
 
-            // Start the discovery process
-            Task.Run(async () => await _networkDiscovery.StartDiscoveryAsync(ipAddress));
+            // Start the discovery process in a background thread to keep UI responsive
+            System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+            {
+                _networkDiscovery.StartDiscovery(ipAddress);
+            });
         }
 
         /// <summary>
@@ -560,11 +562,11 @@ namespace Manny_Tools_Claude
                 string connectionString;
                 if (instance.IsNamedInstance)
                 {
-                    connectionString = $"Server={node.IPAddress}\\{instance.InstanceName};Encrypt=False;TrustServerCertificate=True;Connection Timeout=5;";
+                    connectionString = $"Server={node.IPAddress}\\{instance.InstanceName};Encrypt=False;TrustServerCertificate=True;";
                 }
                 else
                 {
-                    connectionString = $"Server={node.IPAddress},{instance.Port};Encrypt=False;TrustServerCertificate=True;Connection Timeout=5;";
+                    connectionString = $"Server={node.IPAddress},{instance.Port};Encrypt=False;TrustServerCertificate=True;";
                 }
 
                 // Try to connect
@@ -619,21 +621,4 @@ namespace Manny_Tools_Claude
     /// <summary>
     /// Helper class for storing node information in tree view nodes
     /// </summary>
-    public class TreeNodeTag
-    {
-        /// <summary>
-        /// Gets or sets the type of the node
-        /// </summary>
-        public string NodeType { get; set; }
-
-        /// <summary>
-        /// Gets or sets the network node
-        /// </summary>
-        public NetworkNode Node { get; set; }
-
-        /// <summary>
-        /// Gets or sets the SQL instance
-        /// </summary>
-        public SqlInstance SqlInstance { get; set; }
-    }
 }

@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
 using System.ComponentModel;
+using Microsoft.Data.SqlClient;
 
 namespace Manny_Tools_Claude
 {
@@ -36,11 +34,6 @@ namespace Manny_Tools_Claude
         /// Gets a value indicating whether discovery is in progress
         /// </summary>
         public bool IsDiscoveryInProgress { get; private set; }
-
-        /// <summary>
-        /// Gets or sets the timeout in milliseconds for network operations
-        /// </summary>
-        public int Timeout { get; set; } = 500;
 
         /// <summary>
         /// Gets or sets the maximum number of concurrent ping operations
@@ -79,9 +72,9 @@ namespace Manny_Tools_Claude
         public bool ScanLocalSubnetOnly { get; set; } = true;
 
         /// <summary>
-        /// Cancellation token source for cancelling discovery operations
+        /// Flag to indicate the operation should be cancelled
         /// </summary>
-        private CancellationTokenSource _cts;
+        private bool _cancelRequested = false;
 
         #endregion
 
@@ -144,18 +137,17 @@ namespace Manny_Tools_Claude
         }
 
         /// <summary>
-        /// Starts the discovery of network nodes and SQL Server instances asynchronously
+        /// Starts the discovery of network nodes and SQL Server instances
         /// </summary>
         /// <param name="localIP">Optional specific local IP to use for scanning</param>
-        public async Task StartDiscoveryAsync(IPAddress localIP = null)
+        public void StartDiscovery(IPAddress localIP = null)
         {
             if (IsDiscoveryInProgress)
                 return;
 
             IsDiscoveryInProgress = true;
             DiscoveredNodes.Clear();
-
-            _cts = new CancellationTokenSource();
+            _cancelRequested = false;
 
             try
             {
@@ -180,15 +172,10 @@ namespace Manny_Tools_Claude
                 OnDiscoveryProgress(new NetworkDiscoveryProgressEventArgs(
                     0, 256, $"Starting network discovery from {localIPString}", null));
 
-                // List to hold tasks for each IP ping operation
-                List<Task<NetworkNode>> pingTasks = new List<Task<NetworkNode>>();
-
                 // Find all active IP addresses in the subnet
-                SemaphoreSlim semaphore = new SemaphoreSlim(MaxConcurrentPings);
-
                 for (int i = 1; i <= 255; i++)
                 {
-                    if (_cts.Token.IsCancellationRequested)
+                    if (_cancelRequested)
                         break;
 
                     string ipAddress = $"{subnet}.{i}";
@@ -208,46 +195,19 @@ namespace Manny_Tools_Claude
                         continue;
                     }
 
-                    await semaphore.WaitAsync(_cts.Token);
+                    NetworkNode node = PingHost(ipAddress);
 
-                    pingTasks.Add(Task.Run(async () =>
+                    if (node.IsResponding)
                     {
-                        try
-                        {
-                            NetworkNode node = await PingHostAsync(ipAddress, _cts.Token);
+                        DiscoveredNodes.Add(node);
 
-                            if (node.IsResponding)
-                            {
-                                lock (DiscoveredNodes)
-                                {
-                                    DiscoveredNodes.Add(node);
-                                }
-
-                                int progress = (int)((float)DiscoveredNodes.Count / 255 * 100);
-                                OnDiscoveryProgress(new NetworkDiscoveryProgressEventArgs(
-                                    DiscoveredNodes.Count, 255, $"Discovered: {ipAddress} ({node.Hostname})", node));
-                            }
-
-                            return node;
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    }, _cts.Token));
+                        int progress = (int)((float)DiscoveredNodes.Count / 255 * 100);
+                        OnDiscoveryProgress(new NetworkDiscoveryProgressEventArgs(
+                            DiscoveredNodes.Count, 255, $"Discovered: {ipAddress} ({node.Hostname})", node));
+                    }
                 }
 
-                // Wait for all ping tasks to complete or cancel
-                try
-                {
-                    await Task.WhenAll(pingTasks.ToArray());
-                }
-                catch (OperationCanceledException)
-                {
-                    // Cancellation is handled below
-                }
-
-                if (_cts.Token.IsCancellationRequested)
+                if (_cancelRequested)
                 {
                     OnDiscoveryCompleted(new NetworkDiscoveryCompletedEventArgs(
                         DiscoveredNodes, "Discovery was cancelled", false));
@@ -256,12 +216,12 @@ namespace Manny_Tools_Claude
                 }
 
                 // Now scan for SQL Server instances on responding hosts
-                await ScanForSqlServersAsync(_cts.Token);
+                ScanForSqlServers();
 
                 // Also try to discover SQL Server instances via UDP broadcast
                 if (ScanForNamedInstances)
                 {
-                    await DiscoverNamedSqlInstancesAsync(_cts.Token);
+                    DiscoverNamedSqlInstances();
                 }
 
                 // Complete the discovery process
@@ -286,9 +246,9 @@ namespace Manny_Tools_Claude
         /// </summary>
         public void CancelDiscovery()
         {
-            if (IsDiscoveryInProgress && _cts != null)
+            if (IsDiscoveryInProgress)
             {
-                _cts.Cancel();
+                _cancelRequested = true;
             }
         }
 
@@ -341,7 +301,7 @@ namespace Manny_Tools_Claude
         /// <summary>
         /// Pings a host and gets its details if it responds
         /// </summary>
-        private async Task<NetworkNode> PingHostAsync(string ipAddress, CancellationToken cancellationToken)
+        private NetworkNode PingHost(string ipAddress)
         {
             NetworkNode node = new NetworkNode { IPAddress = ipAddress };
 
@@ -349,7 +309,7 @@ namespace Manny_Tools_Claude
             {
                 using (Ping ping = new Ping())
                 {
-                    PingReply reply = await ping.SendPingAsync(ipAddress, Timeout);
+                    PingReply reply = ping.Send(ipAddress);
 
                     if (reply.Status == IPStatus.Success)
                     {
@@ -358,7 +318,7 @@ namespace Manny_Tools_Claude
 
                         try
                         {
-                            IPHostEntry hostEntry = await Dns.GetHostEntryAsync(ipAddress);
+                            IPHostEntry hostEntry = Dns.GetHostEntry(ipAddress);
                             node.Hostname = hostEntry.HostName;
                         }
                         catch
@@ -381,7 +341,7 @@ namespace Manny_Tools_Claude
         /// <summary>
         /// Checks for SQL Server instances on all discovered nodes
         /// </summary>
-        private async Task ScanForSqlServersAsync(CancellationToken cancellationToken)
+        private void ScanForSqlServers()
         {
             if (DiscoveredNodes.Count == 0)
                 return;
@@ -389,106 +349,74 @@ namespace Manny_Tools_Claude
             OnDiscoveryProgress(new NetworkDiscoveryProgressEventArgs(
                 0, DiscoveredNodes.Count, "Scanning for SQL Server instances...", null));
 
-            SemaphoreSlim sqlSemaphore = new SemaphoreSlim(MaxConcurrentSqlChecks);
-            List<Task> sqlCheckTasks = new List<Task>();
-
             foreach (var node in DiscoveredNodes.Where(n => n.IsResponding))
             {
-                if (cancellationToken.IsCancellationRequested)
+                if (_cancelRequested)
                     break;
 
-                await sqlSemaphore.WaitAsync(cancellationToken);
-
-                sqlCheckTasks.Add(Task.Run(async () =>
+                if (ScanCommonSqlPorts)
                 {
-                    try
+                    // Check all common SQL ports
+                    foreach (int port in _commonSqlPorts)
                     {
-                        if (ScanCommonSqlPorts)
-                        {
-                            // Check all common SQL ports
-                            foreach (int port in _commonSqlPorts)
-                            {
-                                if (cancellationToken.IsCancellationRequested)
-                                    break;
+                        if (_cancelRequested)
+                            break;
 
-                                if (await CheckPortAsync(node.IPAddress, port, cancellationToken))
-                                {
-                                    await TryConnectToSqlServerAsync(node, port, cancellationToken);
-                                }
-                            }
-                        }
-                        else
+                        if (CheckPort(node.IPAddress, port))
                         {
-                            // Check only the default SQL Server port
-                            if (await CheckPortAsync(node.IPAddress, SqlServerPort, cancellationToken))
-                            {
-                                await TryConnectToSqlServerAsync(node, SqlServerPort, cancellationToken);
-                            }
+                            TryConnectToSqlServer(node, port);
                         }
-
-                        OnDiscoveryProgress(new NetworkDiscoveryProgressEventArgs(
-                            DiscoveredNodes.IndexOf(node) + 1,
-                            DiscoveredNodes.Count,
-                            $"Scanned {node.IPAddress} ({node.Hostname}), found {node.SqlInstances.Count} SQL instances",
-                            node));
                     }
-                    finally
+                }
+                else
+                {
+                    // Check only the default SQL Server port
+                    if (CheckPort(node.IPAddress, SqlServerPort))
                     {
-                        sqlSemaphore.Release();
+                        TryConnectToSqlServer(node, SqlServerPort);
                     }
-                }, cancellationToken));
-            }
+                }
 
-            try
-            {
-                await Task.WhenAll(sqlCheckTasks.ToArray());
-            }
-            catch (OperationCanceledException)
-            {
-                // Cancellation is expected and handled by the caller
+                OnDiscoveryProgress(new NetworkDiscoveryProgressEventArgs(
+                    DiscoveredNodes.IndexOf(node) + 1,
+                    DiscoveredNodes.Count,
+                    $"Scanned {node.IPAddress} ({node.Hostname}), found {node.SqlInstances.Count} SQL instances",
+                    node));
             }
         }
 
         /// <summary>
         /// Checks if a TCP port is open on a host
         /// </summary>
-        private async Task<bool> CheckPortAsync(string ipAddress, int port, CancellationToken cancellationToken)
+        private bool CheckPort(string ipAddress, int port)
         {
             try
             {
                 using (TcpClient client = new TcpClient())
                 {
-                    var connectTask = client.ConnectAsync(ipAddress, port);
-                    var timeoutTask = Task.Delay(Timeout, cancellationToken);
-
-                    var completedTask = await Task.WhenAny(connectTask, timeoutTask);
-
-                    if (completedTask == connectTask && client.Connected)
-                    {
-                        return true;
-                    }
+                    client.Connect(ipAddress, port);
+                    return client.Connected;
                 }
             }
             catch
             {
                 // Any error means the port is not accessible
+                return false;
             }
-
-            return false;
         }
 
         /// <summary>
         /// Tries to connect to a SQL Server instance on a specific port
         /// </summary>
-        private async Task TryConnectToSqlServerAsync(NetworkNode node, int port, CancellationToken cancellationToken)
+        private void TryConnectToSqlServer(NetworkNode node, int port)
         {
             try
             {
-                string connectionString = $"Server={node.IPAddress},{port};Encrypt=False;TrustServerCertificate=True;Connection Timeout={Timeout / 1000};";
+                string connectionString = $"Server={node.IPAddress},{port};Encrypt=False;TrustServerCertificate=True;";
 
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    await connection.OpenAsync(cancellationToken);
+                    connection.Open();
 
                     SqlInstance sqlInstance = new SqlInstance
                     {
@@ -565,7 +493,7 @@ namespace Manny_Tools_Claude
         /// <summary>
         /// Discovers SQL Server named instances using UDP broadcast method
         /// </summary>
-        private async Task DiscoverNamedSqlInstancesAsync(CancellationToken cancellationToken)
+        private void DiscoverNamedSqlInstances()
         {
             OnDiscoveryProgress(new NetworkDiscoveryProgressEventArgs(
                 0, 100, "Scanning for named SQL Server instances...", null));
@@ -577,27 +505,22 @@ namespace Manny_Tools_Claude
                 {
                     foreach (var node in DiscoveredNodes.Where(n => n.IsResponding))
                     {
-                        if (cancellationToken.IsCancellationRequested)
+                        if (_cancelRequested)
                             break;
 
                         try
                         {
                             // Send the SQL Server browser request packet (single byte 0x02)
-                            udpClient.Client.ReceiveTimeout = Timeout;
                             udpClient.Connect(node.IPAddress, 1434);
                             byte[] requestData = { 0x02 };
-                            await udpClient.SendAsync(requestData, requestData.Length);
+                            udpClient.Send(requestData, requestData.Length);
 
                             // Try to receive a response
-                            var receiveTask = udpClient.ReceiveAsync();
-                            var timeoutTask = Task.Delay(Timeout, cancellationToken);
-
-                            var completedTask = await Task.WhenAny(receiveTask, timeoutTask);
-
-                            if (completedTask == receiveTask)
+                            udpClient.Client.ReceiveTimeout = 500;
+                            try
                             {
-                                var result = await receiveTask;
-                                byte[] responseData = result.Buffer;
+                                IPEndPoint remoteEndPoint = null;
+                                byte[] responseData = udpClient.Receive(ref remoteEndPoint);
 
                                 if (responseData != null && responseData.Length > 3 && responseData[0] == 0x05)
                                 {
@@ -623,10 +546,14 @@ namespace Manny_Tools_Claude
                                             };
 
                                             // Check if we can connect to this instance
-                                            await TryConnectToSqlInstanceAsync(node, sqlInstance, cancellationToken);
+                                            TryConnectToSqlInstance(node, sqlInstance);
                                         }
                                     }
                                 }
+                            }
+                            catch (SocketException)
+                            {
+                                // Timeout or other socket error, move on to next node
                             }
                         }
                         catch (Exception ex)
@@ -665,7 +592,7 @@ namespace Manny_Tools_Claude
         /// <summary>
         /// Tries to connect to a SQL Server instance using its full information
         /// </summary>
-        private async Task TryConnectToSqlInstanceAsync(NetworkNode node, SqlInstance instance, CancellationToken cancellationToken)
+        private void TryConnectToSqlInstance(NetworkNode node, SqlInstance instance)
         {
             try
             {
@@ -676,22 +603,22 @@ namespace Manny_Tools_Claude
                     // For named instances, use the instance name and port if available
                     if (instance.Port > 0)
                     {
-                        connectionString = $"Server={node.IPAddress}\\{instance.InstanceName},{instance.Port};Encrypt=False;TrustServerCertificate=True;Connection Timeout={Timeout / 1000};";
+                        connectionString = $"Server={node.IPAddress}\\{instance.InstanceName},{instance.Port};Encrypt=False;TrustServerCertificate=True;";
                     }
                     else
                     {
-                        connectionString = $"Server={node.IPAddress}\\{instance.InstanceName};Encrypt=False;TrustServerCertificate=True;Connection Timeout={Timeout / 1000};";
+                        connectionString = $"Server={node.IPAddress}\\{instance.InstanceName};Encrypt=False;TrustServerCertificate=True;";
                     }
                 }
                 else
                 {
                     // For default instances, just use the IP and port
-                    connectionString = $"Server={node.IPAddress},{instance.Port};Encrypt=False;TrustServerCertificate=True;Connection Timeout={Timeout / 1000};";
+                    connectionString = $"Server={node.IPAddress},{instance.Port};Encrypt=False;TrustServerCertificate=True;";
                 }
 
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
-                    await connection.OpenAsync(cancellationToken);
+                    connection.Open();
 
                     instance.IsAccessible = true;
                     instance.Version = GetSqlServerVersion(connection);
@@ -744,196 +671,4 @@ namespace Manny_Tools_Claude
 
         #endregion
     }
-
-    #region Supporting Classes
-
-    /// <summary>
-    /// Class to hold IP address information
-    /// </summary>
-    public class IPAddressInfo
-    {
-        public IPAddress IPAddress { get; set; }
-        public string InterfaceName { get; set; }
-        public string Description { get; set; }
-
-        public override string ToString()
-        {
-            return $"{IPAddress} ({InterfaceName})";
-        }
-    }
-
-    /// <summary>
-    /// Represents a network node discovered during network scanning
-    /// </summary>
-    public class NetworkNode
-    {
-        /// <summary>
-        /// Gets or sets the IP address of the node
-        /// </summary>
-        public string IPAddress { get; set; }
-
-        /// <summary>
-        /// Gets or sets the hostname of the node
-        /// </summary>
-        public string Hostname { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the node is responding to ping
-        /// </summary>
-        public bool IsResponding { get; set; }
-
-        /// <summary>
-        /// Gets or sets the ping response time in milliseconds
-        /// </summary>
-        public long ResponseTime { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this is the local machine
-        /// </summary>
-        public bool IsLocalMachine { get; set; }
-
-        /// <summary>
-        /// Gets or sets the list of SQL Server instances on this node
-        /// </summary>
-        public List<SqlInstance> SqlInstances { get; set; } = new List<SqlInstance>();
-
-        /// <summary>
-        /// Returns a string representation of the network node
-        /// </summary>
-        public override string ToString()
-        {
-            return $"{IPAddress} ({Hostname}) - {SqlInstances.Count} SQL instances";
-        }
-    }
-
-    /// <summary>
-    /// Represents a SQL Server instance discovered during network scanning
-    /// </summary>
-    public class SqlInstance
-    {
-        /// <summary>
-        /// Gets or sets the name of the server hosting this instance
-        /// </summary>
-        public string ServerName { get; set; }
-
-        /// <summary>
-        /// Gets or sets the instance name
-        /// </summary>
-        public string InstanceName { get; set; }
-
-        /// <summary>
-        /// Gets or sets the TCP port the instance is listening on
-        /// </summary>
-        public int Port { get; set; }
-
-        /// <summary>
-        /// Gets or sets the SQL Server version
-        /// </summary>
-        public string Version { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether the instance is accessible
-        /// </summary>
-        public bool IsAccessible { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this is a named instance
-        /// </summary>
-        public bool IsNamedInstance { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this instance was discovered via SQL Browser service
-        /// </summary>
-        public bool IsDiscoveredViaBrowser { get; set; }
-
-        /// <summary>
-        /// Gets or sets the last error message when attempting to connect
-        /// </summary>
-        public string LastError { get; set; }
-
-        /// <summary>
-        /// Returns a string representation of the SQL Server instance
-        /// </summary>
-        public override string ToString()
-        {
-            if (IsNamedInstance)
-            {
-                return $"{ServerName}\\{InstanceName} ({Port}) - {(IsAccessible ? "Accessible" : "Not accessible")}";
-            }
-            else
-            {
-                return $"{ServerName}:{Port} - {(IsAccessible ? "Accessible" : "Not accessible")}";
-            }
-        }
-    }
-
-    /// <summary>
-    /// Provides event data for the DiscoveryProgress event
-    /// </summary>
-    public class NetworkDiscoveryProgressEventArgs : EventArgs
-    {
-        /// <summary>
-        /// Gets the current progress value
-        /// </summary>
-        public int CurrentProgress { get; }
-
-        /// <summary>
-        /// Gets the total expected progress value
-        /// </summary>
-        public int TotalProgress { get; }
-
-        /// <summary>
-        /// Gets the status message
-        /// </summary>
-        public string StatusMessage { get; }
-
-        /// <summary>
-        /// Gets the currently discovered node, if applicable
-        /// </summary>
-        public NetworkNode CurrentNode { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the NetworkDiscoveryProgressEventArgs class
-        /// </summary>
-        public NetworkDiscoveryProgressEventArgs(int currentProgress, int totalProgress, string statusMessage, NetworkNode currentNode)
-        {
-            CurrentProgress = currentProgress;
-            TotalProgress = totalProgress;
-            StatusMessage = statusMessage;
-            CurrentNode = currentNode;
-        }
-    }
-
-    /// <summary>
-    /// Provides event data for the DiscoveryCompleted event
-    /// </summary>
-    public class NetworkDiscoveryCompletedEventArgs : EventArgs
-    {
-        /// <summary>
-        /// Gets the list of discovered network nodes
-        /// </summary>
-        public List<NetworkNode> DiscoveredNodes { get; }
-
-        /// <summary>
-        /// Gets the completion message
-        /// </summary>
-        public string CompletionMessage { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether the discovery completed successfully
-        /// </summary>
-        public bool IsSuccessful { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the NetworkDiscoveryCompletedEventArgs class
-        /// </summary>
-        public NetworkDiscoveryCompletedEventArgs(List<NetworkNode> discoveredNodes, string completionMessage, bool isSuccessful)
-        {
-            DiscoveredNodes = discoveredNodes;
-            CompletionMessage = completionMessage;
-            IsSuccessful = isSuccessful;
-        }
-    }
-    #endregion
 }
-

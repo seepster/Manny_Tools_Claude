@@ -76,12 +76,13 @@
             // CreateCSVFileButton
             // 
             CreateCSVFileButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            CreateCSVFileButton.Location = new Point(664, 12);
+            CreateCSVFileButton.Location = new Point(673, 18);
             CreateCSVFileButton.Name = "CreateCSVFileButton";
             CreateCSVFileButton.Size = new Size(124, 32);
             CreateCSVFileButton.TabIndex = 5;
             CreateCSVFileButton.Text = "Create CSV File";
             CreateCSVFileButton.UseVisualStyleBackColor = true;
+            CreateCSVFileButton.Click += CreateCSVFileButton_Click;
             // 
             // NextAvailableParentCodeButton
             // 
@@ -91,6 +92,7 @@
             NextAvailableParentCodeButton.TabIndex = 4;
             NextAvailableParentCodeButton.Text = "Next available Parent Code";
             NextAvailableParentCodeButton.UseVisualStyleBackColor = true;
+            NextAvailableParentCodeButton.Click += NextAvailableParentCodeButton_Click;
             // 
             // ClearTemplateButton
             // 
@@ -100,6 +102,7 @@
             ClearTemplateButton.TabIndex = 3;
             ClearTemplateButton.Text = "Clear Template";
             ClearTemplateButton.UseVisualStyleBackColor = true;
+            ClearTemplateButton.Click += ClearTemplateButton_Click;
             // 
             // LoadTemplateButton
             // 

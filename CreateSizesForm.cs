@@ -457,6 +457,12 @@ namespace Manny_Tools_Claude
             //fourth we check if the generated product codes exist in either the ProductCode or ParentCode fields in the ProductInfo table
             //fifth we build each product into a line for the csv file
         }
+
+        private void BtnDetermineSizingMethod_Click(object sender, EventArgs e)
+        {
+            //DetermineSizingMethod();
+        }
+
         private void DisableForm()
         {
             // Show a wait cursor

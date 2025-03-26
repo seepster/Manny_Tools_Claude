@@ -58,6 +58,24 @@
             leftPanel.SuspendLayout();
             rightPanel.SuspendLayout();
             SuspendLayout();
+
+            lblStatus = new Label
+            {
+                Location = new Point(20, 320),
+                Size = new Size(500, 20),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+            this.Controls.Add(lblStatus);
+
+            // Add "Determine Sizing Method" button
+            btnDetermineSizingMethod = new Button
+            {
+                Text = "Determine Sizing Method",
+                Location = new Point(400, 110),
+                Size = new Size(150, 30)
+            };
+            btnDetermineSizingMethod.Click += BtnDetermineSizingMethod_Click;
+            this.topPanel.Controls.Add(btnDetermineSizingMethod);
             // 
             // topPanel
             // 
@@ -354,5 +372,7 @@
         private System.Windows.Forms.ComboBox SupplierComboBox;
         private System.Windows.Forms.Label ProductSizeLabel;
         private System.Windows.Forms.Label SizeLinksLabel;
+        private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.Button btnDetermineSizingMethod;
     }
 }

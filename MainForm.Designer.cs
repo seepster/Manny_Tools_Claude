@@ -18,8 +18,10 @@
             this.tabControl = new System.Windows.Forms.TabControl();
             this.tabViewSQL = new System.Windows.Forms.TabPage();
             this.tabCreateSizes = new System.Windows.Forms.TabPage();
+            this.tabKingsleyProducts = new System.Windows.Forms.TabPage();
             this.tabStockOnHand = new System.Windows.Forms.TabPage();
             this.tabOrbitSizing = new System.Windows.Forms.TabPage();
+            this.tabStockCount = new System.Windows.Forms.TabPage();
             this.headerPanel = new System.Windows.Forms.Panel();
             this.lblTitle = new System.Windows.Forms.Label();
             this.btnSettings = new System.Windows.Forms.Button();
@@ -33,11 +35,13 @@
             this.SuspendLayout();
             // 
             // tabControl
-            // 
+            //
             this.tabControl.Controls.Add(this.tabViewSQL);
             this.tabControl.Controls.Add(this.tabCreateSizes);
+            this.tabControl.Controls.Add(this.tabKingsleyProducts);
             this.tabControl.Controls.Add(this.tabStockOnHand);
             this.tabControl.Controls.Add(this.tabOrbitSizing);
+            this.tabControl.Controls.Add(this.tabStockCount);
             this.tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tabControl.Location = new System.Drawing.Point(5, 65);
             this.tabControl.Name = "tabControl";
@@ -66,25 +70,45 @@
             this.tabCreateSizes.Text = "Create Sizes";
             this.tabCreateSizes.UseVisualStyleBackColor = true;
             // 
+            // tabKingsleyProducts
+            // 
+            this.tabKingsleyProducts.Location = new System.Drawing.Point(4, 33);
+            this.tabKingsleyProducts.Name = "tabKingsleyProducts";
+            this.tabKingsleyProducts.Padding = new System.Windows.Forms.Padding(5);
+            this.tabKingsleyProducts.Size = new System.Drawing.Size(1182, 671);
+            this.tabKingsleyProducts.TabIndex = 2;
+            this.tabKingsleyProducts.Text = "Kingsley Products Create";
+            this.tabKingsleyProducts.UseVisualStyleBackColor = true;
+            // 
             // tabStockOnHand
             // 
             this.tabStockOnHand.Location = new System.Drawing.Point(4, 33);
             this.tabStockOnHand.Name = "tabStockOnHand";
             this.tabStockOnHand.Padding = new System.Windows.Forms.Padding(5);
             this.tabStockOnHand.Size = new System.Drawing.Size(1182, 671);
-            this.tabStockOnHand.TabIndex = 2;
+            this.tabStockOnHand.TabIndex = 3;
             this.tabStockOnHand.Text = "Stock On Hand";
             this.tabStockOnHand.UseVisualStyleBackColor = true;
             // 
             // tabOrbitSizing
-            // 
+            //
             this.tabOrbitSizing.Location = new System.Drawing.Point(4, 33);
             this.tabOrbitSizing.Name = "tabOrbitSizing";
             this.tabOrbitSizing.Padding = new System.Windows.Forms.Padding(5);
             this.tabOrbitSizing.Size = new System.Drawing.Size(1182, 671);
-            this.tabOrbitSizing.TabIndex = 3;
+            this.tabOrbitSizing.TabIndex = 4;
             this.tabOrbitSizing.Text = "Orbit Sizing Method";
             this.tabOrbitSizing.UseVisualStyleBackColor = true;
+            //
+            // tabStockCount
+            //
+            this.tabStockCount.Location = new System.Drawing.Point(4, 33);
+            this.tabStockCount.Name = "tabStockCount";
+            this.tabStockCount.Padding = new System.Windows.Forms.Padding(5);
+            this.tabStockCount.Size = new System.Drawing.Size(1182, 671);
+            this.tabStockCount.TabIndex = 5;
+            this.tabStockCount.Text = "Stock Count";
+            this.tabStockCount.UseVisualStyleBackColor = true;
             // 
             // headerPanel
             // 
@@ -191,8 +215,10 @@
         private System.Windows.Forms.TabControl tabControl;
         private System.Windows.Forms.TabPage tabViewSQL;
         private System.Windows.Forms.TabPage tabCreateSizes;
+        private System.Windows.Forms.TabPage tabKingsleyProducts;
         private System.Windows.Forms.TabPage tabStockOnHand;
         private System.Windows.Forms.TabPage tabOrbitSizing;
+        private System.Windows.Forms.TabPage tabStockCount;
         private System.Windows.Forms.Panel headerPanel;
         private System.Windows.Forms.Button btnSettings;
         private System.Windows.Forms.Button btnUserManagement;

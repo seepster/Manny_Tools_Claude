@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using Microsoft.Data.SqlClient;
@@ -19,20 +19,15 @@ namespace Manny_Tools_Claude
         /// <param name="query">The SQL query to execute.</param>
         /// <param name="parameters">Optional object containing query parameters.</param>
         /// <returns>A list of objects of type T populated with the query results.</returns>
+        /// <exception cref="SqlException">Thrown when there is a SQL error.</exception>
+        /// <exception cref="Exception">Thrown when there is any other error.</exception>
         public static List<T> ExecuteQuery<T>(string connectionString, string query, object parameters = null)
         {
-            try
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
-                {
-                    connection.Open();
-                    var results = connection.Query<T>(query, parameters);
-                    return results.AsList();
-                }
-            }
-            catch (Exception)
-            {
-                return new List<T>();
+                connection.Open();
+                var results = connection.Query<T>(query, parameters);
+                return results.AsList();
             }
         }
 
@@ -44,19 +39,14 @@ namespace Manny_Tools_Claude
         /// <param name="query">The SQL query to execute.</param>
         /// <param name="parameters">Optional object containing query parameters.</param>
         /// <returns>A single object of type T.</returns>
+        /// <exception cref="SqlException">Thrown when there is a SQL error.</exception>
+        /// <exception cref="Exception">Thrown when there is any other error.</exception>
         public static T ExecuteSingle<T>(string connectionString, string query, object parameters = null)
         {
-            try
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
-                {
-                    connection.Open();
-                    return connection.QuerySingleOrDefault<T>(query, parameters);
-                }
-            }
-            catch (Exception)
-            {
-                return default;
+                connection.Open();
+                return connection.QuerySingleOrDefault<T>(query, parameters);
             }
         }
 
@@ -68,19 +58,14 @@ namespace Manny_Tools_Claude
         /// <param name="query">The SQL query to execute.</param>
         /// <param name="parameters">Optional object containing query parameters.</param>
         /// <returns>The scalar value returned by the query.</returns>
+        /// <exception cref="SqlException">Thrown when there is a SQL error.</exception>
+        /// <exception cref="Exception">Thrown when there is any other error.</exception>
         public static T ExecuteScalar<T>(string connectionString, string query, object parameters = null)
         {
-            try
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
-                {
-                    connection.Open();
-                    return connection.ExecuteScalar<T>(query, parameters);
-                }
-            }
-            catch (Exception)
-            {
-                return default;
+                connection.Open();
+                return connection.ExecuteScalar<T>(query, parameters);
             }
         }
 
@@ -91,19 +76,14 @@ namespace Manny_Tools_Claude
         /// <param name="query">The SQL command to execute.</param>
         /// <param name="parameters">Optional object containing query parameters.</param>
         /// <returns>The number of rows affected.</returns>
+        /// <exception cref="SqlException">Thrown when there is a SQL error.</exception>
+        /// <exception cref="Exception">Thrown when there is any other error.</exception>
         public static int ExecuteNonQuery(string connectionString, string query, object parameters = null)
         {
-            try
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
-                {
-                    connection.Open();
-                    return connection.Execute(query, parameters);
-                }
-            }
-            catch (Exception)
-            {
-                return 0;
+                connection.Open();
+                return connection.Execute(query, parameters);
             }
         }
 
@@ -113,32 +93,33 @@ namespace Manny_Tools_Claude
         /// <param name="connectionString">The SQL connection string.</param>
         /// <param name="actions">Action to perform within the transaction.</param>
         /// <returns>True if the transaction completed successfully, false otherwise.</returns>
+        /// <exception cref="SqlException">Thrown when there is a SQL error during the transaction.</exception>
+        /// <exception cref="Exception">Thrown when there is any other error during the transaction.</exception>
         public static bool ExecuteInTransaction(string connectionString, Action<IDbConnection, IDbTransaction> actions)
         {
-            try
+            using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
             {
-                using (var connection = DatabaseConnectionManager.CreateConnection(connectionString))
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
                 {
-                    connection.Open();
-                    using (var transaction = connection.BeginTransaction())
+                    try
                     {
-                        try
-                        {
-                            actions(connection, transaction);
-                            transaction.Commit();
-                            return true;
-                        }
-                        catch
-                        {
-                            transaction.Rollback();
-                            return false;
-                        }
+                        actions(connection, transaction);
+                        transaction.Commit();
+                        return true;
+                    }
+                    catch (SqlException)
+                    {
+                        // Let SQL exceptions propagate up with their original details
+                        transaction.Rollback();
+                        throw;
+                    }
+                    catch (Exception)
+                    {
+                        transaction.Rollback();
+                        throw;
                     }
                 }
-            }
-            catch
-            {
-                return false;
             }
         }
     }

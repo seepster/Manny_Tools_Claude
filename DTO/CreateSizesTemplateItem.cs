@@ -10,12 +10,14 @@ namespace Manny_Tools_Claude.DTO
     {
         public string ParentCode { get; set; }
         public string Description { get; set; }
-        public CreateSizesProductSizeItem ProductSize { get; set; }
-        public List<CreateSizesSizeLinkItem> SizeLinks { get; set; }
+        public string ProductSize { get; set; }
 
-        public double Markup { get; set; }
-        public double CostPriceExcl { get; set; }
+        public string Department { get; set; }
+
+        public string Markup { get; set; }
+        public string CostPriceExcl { get; set; }
         public string SupplierCode { get; set; }
+        public string SizeLink { get; set; }
         public CreateSizesSupplierItem Supplier { get; set; }
 
     }

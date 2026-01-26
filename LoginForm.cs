@@ -26,6 +26,9 @@ namespace Manny_Tools_Claude
             AuthenticatedUsername = string.Empty;
             IsDefaultPassword = false;
 
+            // Set version label
+            lblVersion.Text = $"v{AppVersion.Version}";
+
             // Create default users if they don't exist
             CreateDefaultUsers();
         }

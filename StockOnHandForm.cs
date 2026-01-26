@@ -57,10 +57,17 @@ namespace Manny_Tools_Claude
             LoadVisibleColumns();
             ConfigureDataGridColumns();
 
-            // If connection string is null or empty, try to load it
+            // If connection string is null or empty, get it from DatabaseConnectionManager
             if (string.IsNullOrEmpty(_connectionString))
             {
-                TryLoadConnectionString();
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                
+                // If still empty, try to load it
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    DatabaseConnectionManager.Instance.LoadConnectionString();
+                    _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                }
             }
 
             // Update connection status display
@@ -103,36 +110,6 @@ namespace Manny_Tools_Claude
             }
         }
 
-        private bool TryLoadConnectionString()
-        {
-            try
-            {
-                string appDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "MannyTools");
-
-                string configPath = Path.Combine(appDataPath, "connection.cfg");
-
-                if (File.Exists(configPath))
-                {
-                    // Read connection string
-                    _connectionString = File.ReadAllText(configPath);
-
-                    // Test the connection
-                    if (!string.IsNullOrEmpty(_connectionString))
-                    {
-                        return SQL_Connection_Helper.TestConnection(_connectionString);
-                    }
-                }
-            }
-            catch
-            {
-                // Error reading file
-                _connectionString = null;
-            }
-
-            return false;
-        }
 
         public void UpdateConnectionString(string connectionString)
         {
@@ -299,10 +276,20 @@ namespace Manny_Tools_Claude
         // from both button click and Enter key press
         private void PerformSearch()
         {
-            // If connection string is empty, try loading it again
+            // If connection string is empty, try getting it from DatabaseConnectionManager
             if (string.IsNullOrWhiteSpace(_connectionString))
             {
-                if (!TryLoadConnectionString())
+                _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                
+                // If still empty, try to load it
+                if (string.IsNullOrEmpty(_connectionString))
+                {
+                    DatabaseConnectionManager.Instance.LoadConnectionString();
+                    _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                }
+                
+                // If still no connection string, show error
+                if (string.IsNullOrWhiteSpace(_connectionString))
                 {
                     MessageBox.Show("Database connection not configured. Please set up the connection in Settings.",
                         "Connection Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);

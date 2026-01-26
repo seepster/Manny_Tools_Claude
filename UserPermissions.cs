@@ -12,6 +12,8 @@ namespace Manny_Tools_Claude
         public const string CREATE_SIZES_TAB = "CreateSizesTab";
         public const string STOCK_ON_HAND_TAB = "StockOnHandTab";
         public const string ORBIT_SIZING_METHOD_TAB = "OrbitSizingMethodTab";
+        public const string STOCK_COUNT_TAB = "StockCountTab";
+        public const string CREATE_KINGSLEY_PRODUCT_TAB = "CreateKingsleyProductTab";
 
         // Static dictionary to hold all available permissions and their descriptions
         public static readonly Dictionary<string, string> AvailablePermissions = new Dictionary<string, string>
@@ -19,7 +21,9 @@ namespace Manny_Tools_Claude
             { VIEW_SQL_TAB, "Access to View SQL Tab" },
             { CREATE_SIZES_TAB, "Access to Create Sizes Tab" },
             { STOCK_ON_HAND_TAB, "Access to Stock On Hand Tab" },
-            { ORBIT_SIZING_METHOD_TAB, "Access to Orbit Sizing Method Tab" }
+            { ORBIT_SIZING_METHOD_TAB, "Access to Orbit Sizing Method Tab" },
+            { STOCK_COUNT_TAB, "Access to Stock Count Tab" },
+            { CREATE_KINGSLEY_PRODUCT_TAB, "Access to Create Kingsley Product Tab" }
         };
 
         // Dictionary to hold user permissions
@@ -177,11 +181,12 @@ namespace Manny_Tools_Claude
         {
             _userPermissions = new Dictionary<string, List<string>>();
 
-            // By default, standard user has access to Create Sizes, Stock On Hand, and Orbit Sizing Method tabs
+            // By default, standard user has access to Create Sizes, Stock On Hand, Orbit Sizing Method, and Stock Count tabs
             _userPermissions["user"] = new List<string> {
                 CREATE_SIZES_TAB,
                 STOCK_ON_HAND_TAB,
-                ORBIT_SIZING_METHOD_TAB
+                ORBIT_SIZING_METHOD_TAB,
+                STOCK_COUNT_TAB
             };
 
             // By default, admin user has access to all tabs

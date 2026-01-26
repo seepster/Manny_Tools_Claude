@@ -1,0 +1,151 @@
+exec sp_executesql N'select top 1 N0."ProductID",N0."ProductCode",N0."ParentCode",N0."IsPack",N0."Dormant",N0."Discontinued",N0."DiscontinuedReason",N0."SeasonalItem",N0."OnceOffItem",N0."PackSize",N0."AvgCost",N0."AvgPurchasePrice",N0."LastPurchaseDate",N0."Description",N0."BrandName",N0."UnitSize",N0."UnitOfMeasure",N0."Department",N0."SellingPriceIncl",N0."SystemProduct",N0."Sprice",N0."SellingPriceExcl",N0."CostPriceExcl",N0."CostPriceIncl",N0."ProductPriceExtra",N0."ProductIsExtra",N0."TaxType",N0."TillItem",N0."IsComponent",N0."CombinedProduct",N0."HasContainer",N0."ContainerID",N0."ContainerInfluencesCost",N0."PositiveStockItem",N0."StockItem",N0."DateCreated",N0."DateUpdate",N0."FixedMarkup",N0."Markup",N0."SalesLocation",N0."Batch",N0."StockLocation",N0."SellingPrice2",N0."SellingPrice3",N0."SellingPrice4",N0."SellingPrice5",N0."TaxValue",N0."SerialnumberControlled",N0."SizeLink",N0."ProductSize",N0."ClothingItem",N0."DirectPriceChange",N0."MinorDepartment",N0."MenuCategory",N0."GCRecord",N0."ObjectType" from "dbo"."ProductInfo" N0 where (N0."GCRecord" is null and (N0."ProductCode" = @p0))',N'@p0 nvarchar(4000)',@p0=N'97337'
+go
+exec sp_executesql N'select top 1 N0."UserID",N0."UserName",N0."Surname",N0."Password",N0."ItemCorrect",N0."AllowVoid",N0."AllowSearch",N0."AllowRMDSE",N0."AllowDiscount",N0."RequireOverride",N0."AllowRefund1",N0."AllowRefund2",N0."AllowAmountOverride",N0."AllowNoSale",N0."AllowTransactionVoid",N0."AllowCardOverTender",N0."AllowChecqueOverTender",N0."AllowEFTOverTender",N0."AllowOverride",N0."ViewProducts",N0."ViewSuppliers",N0."ViewCustomers",N0."ViewReports",N0."ViewSystem",N0."AllowEditProduct",N0."AllowEditPrices",N0."AllowSuperficialProductChanges",N0."AllowSubstantialProductChanges",N0."AllowEditPacks",N0."AllowEditSuppliers",N0."AllowEditSupplierRating",N0."AllowOverrideSupplierCreditlimit",N0."AllowAllocatePayments",N0."AllowCreateClaim",N0."AllowFinalizeClaim",N0."AllowCreateOrder",N0."AllowFinalizeOrder",N0."AllowCreatePurchase",N0."AllowFinalizePurchase",N0."AllowEditCustomer",N0."AllowEditCustomerRating",N0."AllowOverrideCustomerCreditlimit",N0."AllowEditUsers",N0."AllowEditGlobalParameters",N0."AllowCashup",N0."AllowAmtnDisount",N0."AllowPercDiscount",N0."Designation",N0."AllowSubtotal2",N0."AllowPayout",N0."AllowPriceShift",N0."AllowStoreClose",N0."CommisionPercentage",N0."Commission",N0."LastEditDate",N0."CreationDate",N0."GCRecord" from "dbo"."User" N0 where (N0."GCRecord" is null and (N0."UserID" = @p0))',N'@p0 int',@p0=6
+go
+exec sp_executesql N'select TABLE_NAME, TABLE_TYPE, TABLE_SCHEMA from INFORMATION_SCHEMA.TABLES where (TABLE_NAME = @p0 AND TABLE_SCHEMA = @p1) and TABLE_TYPE in (''BASE TABLE'', ''VIEW'')',N'@p0 nvarchar(4000),@p1 nvarchar(4000)',@p0=N'ProductPriceUpdateLog',@p1=N'dbo'
+go
+exec sp_executesql N'select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = @p1 and TABLE_SCHEMA = @p2',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'ProductPriceUpdateLog',@p2=N'dbo'
+go
+exec sp_executesql N'select c.name, COLUMNPROPERTY(t.object_id, c.name, ''IsIdentity'') from sys.key_constraints p
+ join sys.index_columns i on p.parent_object_id = i.object_id and p.unique_index_id = i.index_id
+ join sys.columns c on i.column_id = c.column_id and p.parent_object_id = c.object_id
+ join sys.tables t on p.parent_object_id = t.object_id
+ join sys.schemas s on s.schema_id = p.schema_id
+where t.name = @p1 and p.type = ''PK'' and s.name = @p2
+order by i.key_ordinal',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'ProductPriceUpdateLog',@p2=N'dbo'
+go
+exec sp_executesql N'select i.name, c.name, i.is_unique from sys.objects t
+join sys.indexes i on t.object_id = i.object_id
+join sys.index_columns ic on ic.index_id = i.index_id and ic.object_id = t.object_id
+join sys.columns c on c.column_id = ic.column_id and c.object_id = t.object_id
+join sys.schemas s on s.schema_id = t.schema_id
+where t.name=@p1 and s.name = @p2 and i.name is not null
+order by i.name, ic.key_ordinal',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'ProductPriceUpdateLog',@p2=N'dbo'
+go
+exec sp_executesql N'select c.name, fk.name, pk.name, pks.name, + pkt.name from sys.foreign_key_columns r
+ inner join sys.foreign_keys c on r.constraint_object_id = c.object_id
+ inner join sys.columns fk on r.parent_object_id = fk.object_id and r.parent_column_id = fk.column_id
+ inner join sys.objects fkt on r.parent_object_id = fkt.object_id
+ inner join sys.schemas fks on fks.schema_id = fkt.schema_id
+ inner join sys.columns pk on r.referenced_object_id = pk.object_id and r.referenced_column_id = pk.column_id
+ inner join sys.objects pkt on r.referenced_object_id = pkt.object_id
+ inner join sys.schemas pks on pks.schema_id = pkt.schema_id
+where fkt.name = @p1 and fks.name = @p2
+order by c.name, r.constraint_column_id',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'ProductPriceUpdateLog',@p2=N'dbo'
+go
+declare @p3 int
+set @p3=6256032
+declare @p12 int
+set @p12=1
+exec sp_executesql N'insert into "dbo"."ProductPriceUpdateLog"("Product","PriceNumber","OldPrice","NewPrice","Date","User","WorkStation","OptimisticLockField","GCRecord")values(@p1,@p2,@p3,@p4,@p5,@p6,@p7,@p8,null) set @p0=SCOPE_IDENTITY() set @r=1',N'@p0 int output,@p1 nvarchar(4000),@p2 int,@p3 float,@p4 float,@p5 datetime,@p6 int,@p7 int,@p8 int,@r int output',@p0=@p3 output,@p1=N'97337',@p2=1,@p3=329.99000000000001,@p4=327.12,@p5='2025-10-30 03:47:56.587',@p6=6,@p7=0,@p8=0,@r=@p12 output
+select @p3, @p12
+go
+exec sp_executesql N'select top 1 N0."UserID",N0."UserName",N0."Surname",N0."Password",N0."ItemCorrect",N0."AllowVoid",N0."AllowSearch",N0."AllowRMDSE",N0."AllowDiscount",N0."RequireOverride",N0."AllowRefund1",N0."AllowRefund2",N0."AllowAmountOverride",N0."AllowNoSale",N0."AllowTransactionVoid",N0."AllowCardOverTender",N0."AllowChecqueOverTender",N0."AllowEFTOverTender",N0."AllowOverride",N0."ViewProducts",N0."ViewSuppliers",N0."ViewCustomers",N0."ViewReports",N0."ViewSystem",N0."AllowEditProduct",N0."AllowEditPrices",N0."AllowSuperficialProductChanges",N0."AllowSubstantialProductChanges",N0."AllowEditPacks",N0."AllowEditSuppliers",N0."AllowEditSupplierRating",N0."AllowOverrideSupplierCreditlimit",N0."AllowAllocatePayments",N0."AllowCreateClaim",N0."AllowFinalizeClaim",N0."AllowCreateOrder",N0."AllowFinalizeOrder",N0."AllowCreatePurchase",N0."AllowFinalizePurchase",N0."AllowEditCustomer",N0."AllowEditCustomerRating",N0."AllowOverrideCustomerCreditlimit",N0."AllowEditUsers",N0."AllowEditGlobalParameters",N0."AllowCashup",N0."AllowAmtnDisount",N0."AllowPercDiscount",N0."Designation",N0."AllowSubtotal2",N0."AllowPayout",N0."AllowPriceShift",N0."AllowStoreClose",N0."CommisionPercentage",N0."Commission",N0."LastEditDate",N0."CreationDate",N0."GCRecord" from "dbo"."User" N0 where (N0."GCRecord" is null and (N0."UserID" = @p0))',N'@p0 int',@p0=6
+go
+declare @p3 int
+set @p3=6256033
+declare @p12 int
+set @p12=1
+exec sp_executesql N'insert into "dbo"."ProductPriceUpdateLog"("Product","PriceNumber","OldPrice","NewPrice","Date","User","WorkStation","OptimisticLockField","GCRecord")values(@p1,@p2,@p3,@p4,@p5,@p6,@p7,@p8,null) set @p0=SCOPE_IDENTITY() set @r=1',N'@p0 int output,@p1 nvarchar(4000),@p2 int,@p3 float,@p4 float,@p5 datetime,@p6 int,@p7 int,@p8 int,@r int output',@p0=@p3 output,@p1=N'97337',@p2=2,@p3=329.99000000000001,@p4=327.12,@p5='2025-10-30 03:47:56.603',@p6=6,@p7=0,@p8=0,@r=@p12 output
+select @p3, @p12
+go
+exec sp_executesql N'select top 1 N0."OID",N0."Holder",N0."Description",N0."SizeCode",N0."OptimisticLockField",N0."GCRecord" from ("dbo"."SizeLink" N0 inner join "dbo"."ProductSize" N1 on (N0."Holder" = N1."OID"))where (N0."GCRecord" is null and (N0."SizeCode" = @p0) and (N1."Number" = @p1))',N'@p0 int,@p1 int',@p0=0,@p1=67
+go
+exec sp_executesql N'select top 1 N0."OID",N0."ParentDepartment",N0."MinorDepartmentName",N0."MinorDepartmentNumber",N0."OptimisticLockField",N0."GCRecord" from "dbo"."MinorDepartment" N0 where (N0."GCRecord" is null and (N0."MinorDepartmentNumber" = @p0) and (N0."ParentDepartment" = @p1))',N'@p0 int,@p1 nvarchar(4000)',@p0=0,@p1=N'67'
+go
+declare @p46 int
+set @p46=1
+exec sp_executesql N'update "dbo"."ProductInfo" set "ProductID"=@p0,"ParentCode"=@p1,"IsPack"=@p2,"Dormant"=@p3,"Discontinued"=@p4,"DiscontinuedReason"=@p5,"SeasonalItem"=@p6,"OnceOffItem"=@p7,"PackSize"=@p8,"AvgCost"=@p9,"AvgPurchasePrice"=@p10,"LastPurchaseDate"=@p11,"Description"=@p12,"BrandName"=null,"UnitSize"=@p13,"UnitOfMeasure"=null,"Department"=null,"SellingPriceIncl"=@p14,"SystemProduct"=@p15,"Sprice"=@p16,"SellingPriceExcl"=@p17,"CostPriceExcl"=@p18,"CostPriceIncl"=@p19,"ProductPriceExtra"=@p20,"ProductIsExtra"=@p21,"TaxType"=null,"TillItem"=@p22,"IsComponent"=@p23,"CombinedProduct"=@p24,"HasContainer"=@p25,"ContainerID"=null,"ContainerInfluencesCost"=@p26,"PositiveStockItem"=@p27,"StockItem"=@p28,"DateCreated"=@p29,"DateUpdate"=@p30,"FixedMarkup"=@p31,"Markup"=@p32,"SalesLocation"=null,"Batch"=@p33,"StockLocation"=null,"SellingPrice2"=@p34,"SellingPrice3"=@p35,"SellingPrice4"=@p36,"SellingPrice5"=@p37,"TaxValue"=@p38,"SerialnumberControlled"=@p39,"SizeLink"=null,"ProductSize"=null,"ClothingItem"=@p40,"DirectPriceChange"=@p41,"MinorDepartment"=null,"MenuCategory"=null,"GCRecord"=null where ("ProductCode" = @p42) set @r=1',N'@p0 int,@p1 nvarchar(4000),@p2 bit,@p3 bit,@p4 bit,@p5 int,@p6 bit,@p7 bit,@p8 int,@p9 float,@p10 float,@p11 datetime,@p12 nvarchar(4000),@p13 float,@p14 float,@p15 bit,@p16 float,@p17 float,@p18 float,@p19 float,@p20 float,@p21 bit,@p22 bit,@p23 bit,@p24 bit,@p25 bit,@p26 bit,@p27 bit,@p28 bit,@p29 datetime,@p30 datetime,@p31 bit,@p32 float,@p33 bit,@p34 float,@p35 float,@p36 float,@p37 float,@p38 int,@p39 bit,@p40 bit,@p41 bit,@p42 nvarchar(4000),@r int output',@p0=0,@p1=N'97337',@p2=0,@p3=0,@p4=0,@p5=0,@p6=0,@p7=0,@p8=1,@p9=173.479996,@p10=173.479996,@p11='2024-05-16 16:34:24.027',@p12=N'SALOMON WML8751 TEE BLK',@p13=0,@p14=327.12,@p15=0,@p16=0,@p17=286.94781411172562,@p18=173.479996,@p19=197.77000000000001,@p20=0,@p21=0,@p22=1,@p23=0,@p24=0,@p25=0,@p26=0,@p27=0,@p28=1,@p29='2024-05-16 14:46:27.260',@p30='2025-10-30 03:47:56.620',@p31=0,@p32=65.406859999999995,@p33=0,@p34=327.12,@p35=0,@p36=0,@p37=0,@p38=14,@p39=0,@p40=1,@p41=0,@p42=N'97337',@r=@p46 output
+select @p46
+go
+exec sp_executesql N'select top 1 N0."ProductID",N0."ProductCode",N0."ParentCode",N0."IsPack",N0."Dormant",N0."Discontinued",N0."DiscontinuedReason",N0."SeasonalItem",N0."OnceOffItem",N0."PackSize",N0."AvgCost",N0."AvgPurchasePrice",N0."LastPurchaseDate",N0."Description",N0."BrandName",N0."UnitSize",N0."UnitOfMeasure",N0."Department",N0."SellingPriceIncl",N0."SystemProduct",N0."Sprice",N0."SellingPriceExcl",N0."CostPriceExcl",N0."CostPriceIncl",N0."ProductPriceExtra",N0."ProductIsExtra",N0."TaxType",N0."TillItem",N0."IsComponent",N0."CombinedProduct",N0."HasContainer",N0."ContainerID",N0."ContainerInfluencesCost",N0."PositiveStockItem",N0."StockItem",N0."DateCreated",N0."DateUpdate",N0."FixedMarkup",N0."Markup",N0."SalesLocation",N0."Batch",N0."StockLocation",N0."SellingPrice2",N0."SellingPrice3",N0."SellingPrice4",N0."SellingPrice5",N0."TaxValue",N0."SerialnumberControlled",N0."SizeLink",N0."ProductSize",N0."ClothingItem",N0."DirectPriceChange",N0."MinorDepartment",N0."MenuCategory",N0."GCRecord",N0."ObjectType" from "dbo"."ProductInfo" N0 where (N0."GCRecord" is null and (N0."ProductCode" = @p0))',N'@p0 nvarchar(4000)',@p0=N'97337'
+go
+exec sp_executesql N'select top 1 N0."UserID",N0."UserName",N0."Surname",N0."Password",N0."ItemCorrect",N0."AllowVoid",N0."AllowSearch",N0."AllowRMDSE",N0."AllowDiscount",N0."RequireOverride",N0."AllowRefund1",N0."AllowRefund2",N0."AllowAmountOverride",N0."AllowNoSale",N0."AllowTransactionVoid",N0."AllowCardOverTender",N0."AllowChecqueOverTender",N0."AllowEFTOverTender",N0."AllowOverride",N0."ViewProducts",N0."ViewSuppliers",N0."ViewCustomers",N0."ViewReports",N0."ViewSystem",N0."AllowEditProduct",N0."AllowEditPrices",N0."AllowSuperficialProductChanges",N0."AllowSubstantialProductChanges",N0."AllowEditPacks",N0."AllowEditSuppliers",N0."AllowEditSupplierRating",N0."AllowOverrideSupplierCreditlimit",N0."AllowAllocatePayments",N0."AllowCreateClaim",N0."AllowFinalizeClaim",N0."AllowCreateOrder",N0."AllowFinalizeOrder",N0."AllowCreatePurchase",N0."AllowFinalizePurchase",N0."AllowEditCustomer",N0."AllowEditCustomerRating",N0."AllowOverrideCustomerCreditlimit",N0."AllowEditUsers",N0."AllowEditGlobalParameters",N0."AllowCashup",N0."AllowAmtnDisount",N0."AllowPercDiscount",N0."Designation",N0."AllowSubtotal2",N0."AllowPayout",N0."AllowPriceShift",N0."AllowStoreClose",N0."CommisionPercentage",N0."Commission",N0."LastEditDate",N0."CreationDate",N0."GCRecord" from "dbo"."User" N0 where (N0."GCRecord" is null and (N0."UserID" = @p0))',N'@p0 int',@p0=6
+go
+declare @p3 int
+set @p3=6256034
+declare @p12 int
+set @p12=1
+exec sp_executesql N'insert into "dbo"."ProductPriceUpdateLog"("Product","PriceNumber","OldPrice","NewPrice","Date","User","WorkStation","OptimisticLockField","GCRecord")values(@p1,@p2,@p3,@p4,@p5,@p6,@p7,@p8,null) set @p0=SCOPE_IDENTITY() set @r=1',N'@p0 int output,@p1 nvarchar(4000),@p2 int,@p3 float,@p4 float,@p5 datetime,@p6 int,@p7 int,@p8 int,@r int output',@p0=@p3 output,@p1=N'97337',@p2=1,@p3=327.12,@p4=327.12,@p5='2025-10-30 03:47:56.680',@p6=6,@p7=0,@p8=0,@r=@p12 output
+select @p3, @p12
+go
+exec sp_executesql N'select top 1 N0."UserID",N0."UserName",N0."Surname",N0."Password",N0."ItemCorrect",N0."AllowVoid",N0."AllowSearch",N0."AllowRMDSE",N0."AllowDiscount",N0."RequireOverride",N0."AllowRefund1",N0."AllowRefund2",N0."AllowAmountOverride",N0."AllowNoSale",N0."AllowTransactionVoid",N0."AllowCardOverTender",N0."AllowChecqueOverTender",N0."AllowEFTOverTender",N0."AllowOverride",N0."ViewProducts",N0."ViewSuppliers",N0."ViewCustomers",N0."ViewReports",N0."ViewSystem",N0."AllowEditProduct",N0."AllowEditPrices",N0."AllowSuperficialProductChanges",N0."AllowSubstantialProductChanges",N0."AllowEditPacks",N0."AllowEditSuppliers",N0."AllowEditSupplierRating",N0."AllowOverrideSupplierCreditlimit",N0."AllowAllocatePayments",N0."AllowCreateClaim",N0."AllowFinalizeClaim",N0."AllowCreateOrder",N0."AllowFinalizeOrder",N0."AllowCreatePurchase",N0."AllowFinalizePurchase",N0."AllowEditCustomer",N0."AllowEditCustomerRating",N0."AllowOverrideCustomerCreditlimit",N0."AllowEditUsers",N0."AllowEditGlobalParameters",N0."AllowCashup",N0."AllowAmtnDisount",N0."AllowPercDiscount",N0."Designation",N0."AllowSubtotal2",N0."AllowPayout",N0."AllowPriceShift",N0."AllowStoreClose",N0."CommisionPercentage",N0."Commission",N0."LastEditDate",N0."CreationDate",N0."GCRecord" from "dbo"."User" N0 where (N0."GCRecord" is null and (N0."UserID" = @p0))',N'@p0 int',@p0=6
+go
+declare @p3 int
+set @p3=6256035
+declare @p12 int
+set @p12=1
+exec sp_executesql N'insert into "dbo"."ProductPriceUpdateLog"("Product","PriceNumber","OldPrice","NewPrice","Date","User","WorkStation","OptimisticLockField","GCRecord")values(@p1,@p2,@p3,@p4,@p5,@p6,@p7,@p8,null) set @p0=SCOPE_IDENTITY() set @r=1',N'@p0 int output,@p1 nvarchar(4000),@p2 int,@p3 float,@p4 float,@p5 datetime,@p6 int,@p7 int,@p8 int,@r int output',@p0=@p3 output,@p1=N'97337',@p2=2,@p3=327.12,@p4=327.12,@p5='2025-10-30 03:47:56.680',@p6=6,@p7=0,@p8=0,@r=@p12 output
+select @p3, @p12
+go
+exec sp_executesql N'select top 1 N0."OID",N0."Holder",N0."Description",N0."SizeCode",N0."OptimisticLockField",N0."GCRecord" from ("dbo"."SizeLink" N0 inner join "dbo"."ProductSize" N1 on (N0."Holder" = N1."OID"))where (N0."GCRecord" is null and (N0."SizeCode" = @p0) and (N1."Number" = @p1))',N'@p0 int,@p1 int',@p0=0,@p1=67
+go
+exec sp_executesql N'select top 1 N0."OID",N0."ParentDepartment",N0."MinorDepartmentName",N0."MinorDepartmentNumber",N0."OptimisticLockField",N0."GCRecord" from "dbo"."MinorDepartment" N0 where (N0."GCRecord" is null and (N0."MinorDepartmentNumber" = @p0) and (N0."ParentDepartment" = @p1))',N'@p0 int,@p1 nvarchar(4000)',@p0=0,@p1=N'67'
+go
+declare @p46 int
+set @p46=1
+exec sp_executesql N'update "dbo"."ProductInfo" set "ProductID"=@p0,"ParentCode"=@p1,"IsPack"=@p2,"Dormant"=@p3,"Discontinued"=@p4,"DiscontinuedReason"=@p5,"SeasonalItem"=@p6,"OnceOffItem"=@p7,"PackSize"=@p8,"AvgCost"=@p9,"AvgPurchasePrice"=@p10,"LastPurchaseDate"=@p11,"Description"=@p12,"BrandName"=null,"UnitSize"=@p13,"UnitOfMeasure"=null,"Department"=null,"SellingPriceIncl"=@p14,"SystemProduct"=@p15,"Sprice"=@p16,"SellingPriceExcl"=@p17,"CostPriceExcl"=@p18,"CostPriceIncl"=@p19,"ProductPriceExtra"=@p20,"ProductIsExtra"=@p21,"TaxType"=null,"TillItem"=@p22,"IsComponent"=@p23,"CombinedProduct"=@p24,"HasContainer"=@p25,"ContainerID"=null,"ContainerInfluencesCost"=@p26,"PositiveStockItem"=@p27,"StockItem"=@p28,"DateCreated"=@p29,"DateUpdate"=@p30,"FixedMarkup"=@p31,"Markup"=@p32,"SalesLocation"=null,"Batch"=@p33,"StockLocation"=null,"SellingPrice2"=@p34,"SellingPrice3"=@p35,"SellingPrice4"=@p36,"SellingPrice5"=@p37,"TaxValue"=@p38,"SerialnumberControlled"=@p39,"SizeLink"=null,"ProductSize"=null,"ClothingItem"=@p40,"DirectPriceChange"=@p41,"MinorDepartment"=null,"MenuCategory"=null,"GCRecord"=null where ("ProductCode" = @p42) set @r=1',N'@p0 int,@p1 nvarchar(4000),@p2 bit,@p3 bit,@p4 bit,@p5 int,@p6 bit,@p7 bit,@p8 int,@p9 float,@p10 float,@p11 datetime,@p12 nvarchar(4000),@p13 float,@p14 float,@p15 bit,@p16 float,@p17 float,@p18 float,@p19 float,@p20 float,@p21 bit,@p22 bit,@p23 bit,@p24 bit,@p25 bit,@p26 bit,@p27 bit,@p28 bit,@p29 datetime,@p30 datetime,@p31 bit,@p32 float,@p33 bit,@p34 float,@p35 float,@p36 float,@p37 float,@p38 int,@p39 bit,@p40 bit,@p41 bit,@p42 nvarchar(4000),@r int output',@p0=0,@p1=N'97337',@p2=0,@p3=0,@p4=0,@p5=0,@p6=0,@p7=0,@p8=1,@p9=173.479996,@p10=173.479996,@p11='2024-05-16 16:34:24.027',@p12=N'SALOMON WML8751 TEE BLK',@p13=0,@p14=327.12,@p15=0,@p16=0,@p17=286.94781411172562,@p18=173.479996,@p19=197.77000000000001,@p20=0,@p21=0,@p22=1,@p23=0,@p24=0,@p25=0,@p26=0,@p27=0,@p28=1,@p29='2024-05-16 14:46:27.260',@p30='2025-10-30 03:47:56.680',@p31=0,@p32=65.406859999999995,@p33=0,@p34=327.12,@p35=0,@p36=0,@p37=0,@p38=14,@p39=0,@p40=1,@p41=0,@p42=N'97337',@r=@p46 output
+select @p46
+go
+exec sp_executesql N'select TABLE_NAME, TABLE_TYPE, TABLE_SCHEMA from INFORMATION_SCHEMA.TABLES where (TABLE_NAME = @p0 AND TABLE_SCHEMA = @p1 OR TABLE_NAME = @p2 AND TABLE_SCHEMA = @p1) and TABLE_TYPE in (''BASE TABLE'', ''VIEW'')',N'@p0 nvarchar(4000),@p1 nvarchar(4000),@p2 nvarchar(4000)',@p0=N'supplierproductlinks',@p1=N'dbo',@p2=N'Supplier'
+go
+exec sp_executesql N'select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = @p1 and TABLE_SCHEMA = @p2',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'supplierproductlinks',@p2=N'dbo'
+go
+exec sp_executesql N'select c.name, COLUMNPROPERTY(t.object_id, c.name, ''IsIdentity'') from sys.key_constraints p
+ join sys.index_columns i on p.parent_object_id = i.object_id and p.unique_index_id = i.index_id
+ join sys.columns c on i.column_id = c.column_id and p.parent_object_id = c.object_id
+ join sys.tables t on p.parent_object_id = t.object_id
+ join sys.schemas s on s.schema_id = p.schema_id
+where t.name = @p1 and p.type = ''PK'' and s.name = @p2
+order by i.key_ordinal',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'supplierproductlinks',@p2=N'dbo'
+go
+exec sp_executesql N'select i.name, c.name, i.is_unique from sys.objects t
+join sys.indexes i on t.object_id = i.object_id
+join sys.index_columns ic on ic.index_id = i.index_id and ic.object_id = t.object_id
+join sys.columns c on c.column_id = ic.column_id and c.object_id = t.object_id
+join sys.schemas s on s.schema_id = t.schema_id
+where t.name=@p1 and s.name = @p2 and i.name is not null
+order by i.name, ic.key_ordinal',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'supplierproductlinks',@p2=N'dbo'
+go
+exec sp_executesql N'select c.name, fk.name, pk.name, pks.name, + pkt.name from sys.foreign_key_columns r
+ inner join sys.foreign_keys c on r.constraint_object_id = c.object_id
+ inner join sys.columns fk on r.parent_object_id = fk.object_id and r.parent_column_id = fk.column_id
+ inner join sys.objects fkt on r.parent_object_id = fkt.object_id
+ inner join sys.schemas fks on fks.schema_id = fkt.schema_id
+ inner join sys.columns pk on r.referenced_object_id = pk.object_id and r.referenced_column_id = pk.column_id
+ inner join sys.objects pkt on r.referenced_object_id = pkt.object_id
+ inner join sys.schemas pks on pks.schema_id = pkt.schema_id
+where fkt.name = @p1 and fks.name = @p2
+order by c.name, r.constraint_column_id',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'supplierproductlinks',@p2=N'dbo'
+go
+exec sp_executesql N'select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = @p1 and TABLE_SCHEMA = @p2',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'Supplier',@p2=N'dbo'
+go
+exec sp_executesql N'select c.name, COLUMNPROPERTY(t.object_id, c.name, ''IsIdentity'') from sys.key_constraints p
+ join sys.index_columns i on p.parent_object_id = i.object_id and p.unique_index_id = i.index_id
+ join sys.columns c on i.column_id = c.column_id and p.parent_object_id = c.object_id
+ join sys.tables t on p.parent_object_id = t.object_id
+ join sys.schemas s on s.schema_id = p.schema_id
+where t.name = @p1 and p.type = ''PK'' and s.name = @p2
+order by i.key_ordinal',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'Supplier',@p2=N'dbo'
+go
+exec sp_executesql N'select i.name, c.name, i.is_unique from sys.objects t
+join sys.indexes i on t.object_id = i.object_id
+join sys.index_columns ic on ic.index_id = i.index_id and ic.object_id = t.object_id
+join sys.columns c on c.column_id = ic.column_id and c.object_id = t.object_id
+join sys.schemas s on s.schema_id = t.schema_id
+where t.name=@p1 and s.name = @p2 and i.name is not null
+order by i.name, ic.key_ordinal',N'@p1 nvarchar(4000),@p2 nvarchar(4000)',@p1=N'Supplier',@p2=N'dbo'
+go
+exec sp_executesql N'select top 1 N0."CreditorNumber",N0."ProductCode",N1."ObjectType",N0."SupplierProductCode",N0."ListedCostPrice",N0."Discount1",N0."Discount2",N0."Discount3",N0."DefaultSupplier",N0."Origin",N0."Transport",N0."MinimumOrderQty",N0."TradeDiscount",N0."Tally",N0."BonusQty",N0."RebateCostType",N0."TransportCostType",N0."Rebate",N0."CurrencyID",N0."ParentBuyersGroup",N0."WeekNumber",N0."DateCreated",N0."DateUpdated",N0."BranchID",N0."linenumber" from ("dbo"."supplierproductlinks" N0 left join "dbo"."ProductInfo" N1 on (N0."ProductCode" = N1."ProductCode"))where ((N0."ProductCode" = @p0) and (N0."CreditorNumber" = @p1) and (N0."SupplierProductCode" = @p2))',N'@p0 nvarchar(4000),@p1 nvarchar(4000),@p2 nvarchar(4000)',@p0=N'97337',@p1=N'272',@p2=N'WML8751 BLK'
+go
+exec sp_executesql N'select top 1 N0."ProductID",N0."ProductCode",N0."ParentCode",N0."IsPack",N0."Dormant",N0."Discontinued",N0."DiscontinuedReason",N0."SeasonalItem",N0."OnceOffItem",N0."PackSize",N0."AvgCost",N0."AvgPurchasePrice",N0."LastPurchaseDate",N0."Description",N0."BrandName",N0."UnitSize",N0."UnitOfMeasure",N0."Department",N0."SellingPriceIncl",N0."SystemProduct",N0."Sprice",N0."SellingPriceExcl",N0."CostPriceExcl",N0."CostPriceIncl",N0."ProductPriceExtra",N0."ProductIsExtra",N0."TaxType",N0."TillItem",N0."IsComponent",N0."CombinedProduct",N0."HasContainer",N0."ContainerID",N0."ContainerInfluencesCost",N0."PositiveStockItem",N0."StockItem",N0."DateCreated",N0."DateUpdate",N0."FixedMarkup",N0."Markup",N0."SalesLocation",N0."Batch",N0."StockLocation",N0."SellingPrice2",N0."SellingPrice3",N0."SellingPrice4",N0."SellingPrice5",N0."TaxValue",N0."SerialnumberControlled",N0."SizeLink",N0."ProductSize",N0."ClothingItem",N0."DirectPriceChange",N0."MinorDepartment",N0."MenuCategory",N0."GCRecord",N0."ObjectType" from "dbo"."ProductInfo" N0 where (N0."GCRecord" is null and (N0."ProductCode" = @p0))',N'@p0 nvarchar(4000)',@p0=N'97337'
+go
+exec sp_executesql N'select top 1 N0."AccountNumber",N0."AccountName",N0."PhoneNumber",N0."FaxNumber",N0."CellNumber",N0."Email",N0."CreditLimit",N0."AddressOne",N0."AddressTwo",N0."AddressThree",N0."PostalCode",N0."CurrentBalance",N0."DateCreated",N0."DateUpdate",N0."SupplierKind",N0."PurchaseOrderLayout",N0."PurchaseLayout",N0."ReturnLayout",N0."OptimisticLockField",N0."GCRecord" from "dbo"."Supplier" N0 where (N0."GCRecord" is null and (N0."AccountNumber" = @p0))',N'@p0 nvarchar(4000)',@p0=N'272'
+go
+declare @p3 int
+set @p3=652234
+declare @p25 int
+set @p25=1
+exec sp_executesql N'insert into "dbo"."supplierproductlinks"("CreditorNumber","ProductCode","SupplierProductCode","ListedCostPrice","Discount1","Discount2","Discount3","DefaultSupplier","Origin","Transport","MinimumOrderQty","TradeDiscount","Tally","BonusQty","RebateCostType","TransportCostType","Rebate","CurrencyID","ParentBuyersGroup","WeekNumber","DateCreated","DateUpdated","BranchID")values(@p1,@p2,@p3,@p4,@p5,@p6,@p7,@p8,@p9,@p10,@p11,@p12,@p13,@p14,@p15,@p16,@p17,@p18,@p19,@p20,null,null,@p21) set @p0=SCOPE_IDENTITY() set @r=1',N'@p0 int output,@p1 nvarchar(4000),@p2 nvarchar(4000),@p3 nvarchar(4000),@p4 real,@p5 real,@p6 real,@p7 real,@p8 bit,@p9 int,@p10 float,@p11 float,@p12 float,@p13 int,@p14 int,@p15 int,@p16 int,@p17 decimal(1,0),@p18 int,@p19 int,@p20 smallint,@p21 int,@r int output',@p0=@p3 output,@p1=N'272',@p2=N'97337',@p3=N'WML8751 BLK',@p4=173.47999572753906,@p5=0,@p6=0,@p7=0,@p8=0,@p9=0,@p10=0,@p11=0,@p12=0,@p13=0,@p14=0,@p15=0,@p16=0,@p17=0,@p18=0,@p19=0,@p20=0,@p21=0,@r=@p25 output
+select @p3, @p25
+go

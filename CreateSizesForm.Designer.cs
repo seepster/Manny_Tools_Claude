@@ -29,17 +29,14 @@
         private void InitializeComponent()
         {
             topPanel = new Panel();
-            CreateCSVFileButton = new Button();
+            CreateSizesButton = new Button();
             NextAvailableParentCodeButton = new Button();
             ClearTemplateButton = new Button();
             LoadTemplateButton = new Button();
             Product_ParentCodeTextBox = new TextBox();
             ParentProductCodeButton = new Button();
             leftPanel = new Panel();
-            SizeLinksLabel = new Label();
             ProductSizeLabel = new Label();
-            SelectAllCheckBox = new CheckBox();
-            SizeLinksListBox = new CheckedListBox();
             ProductSizeComboBox = new ComboBox();
             rightPanel = new Panel();
             SupplierComboBox = new ComboBox();
@@ -50,36 +47,16 @@
             CostPriceExclLabel = new Label();
             MarkupTextBox = new TextBox();
             MarkupLabel = new Label();
-            SizeSuffixTextBox = new TextBox();
-            SizeSuffixLabel = new Label();
             DescriptionTextBox = new TextBox();
             DescriptionLabel = new Label();
             topPanel.SuspendLayout();
             leftPanel.SuspendLayout();
             rightPanel.SuspendLayout();
             SuspendLayout();
-
-            lblStatus = new Label
-            {
-                Location = new Point(20, 320),
-                Size = new Size(500, 20),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-            this.Controls.Add(lblStatus);
-
-            // Add "Determine Sizing Method" button
-            btnDetermineSizingMethod = new Button
-            {
-                Text = "Determine Sizing Method",
-                Location = new Point(400, 110),
-                Size = new Size(150, 30)
-            };
-            btnDetermineSizingMethod.Click += BtnDetermineSizingMethod_Click;
-            this.topPanel.Controls.Add(btnDetermineSizingMethod);
             // 
             // topPanel
             // 
-            topPanel.Controls.Add(CreateCSVFileButton);
+            topPanel.Controls.Add(CreateSizesButton);
             topPanel.Controls.Add(NextAvailableParentCodeButton);
             topPanel.Controls.Add(ClearTemplateButton);
             topPanel.Controls.Add(LoadTemplateButton);
@@ -91,16 +68,16 @@
             topPanel.Size = new Size(800, 100);
             topPanel.TabIndex = 0;
             // 
-            // CreateCSVFileButton
+            // CreateSizesButton
             // 
-            CreateCSVFileButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            CreateCSVFileButton.Location = new Point(673, 18);
-            CreateCSVFileButton.Name = "CreateCSVFileButton";
-            CreateCSVFileButton.Size = new Size(124, 32);
-            CreateCSVFileButton.TabIndex = 5;
-            CreateCSVFileButton.Text = "Create CSV File";
-            CreateCSVFileButton.UseVisualStyleBackColor = true;
-            CreateCSVFileButton.Click += CreateCSVFileButton_Click;
+            CreateSizesButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            CreateSizesButton.Location = new Point(673, 18);
+            CreateSizesButton.Name = "CreateSizesButton";
+            CreateSizesButton.Size = new Size(124, 32);
+            CreateSizesButton.TabIndex = 5;
+            CreateSizesButton.Text = "Create Sizes";
+            CreateSizesButton.UseVisualStyleBackColor = true;
+            CreateSizesButton.Click += CreateSizesButton_Click;
             // 
             // NextAvailableParentCodeButton
             // 
@@ -150,25 +127,13 @@
             // 
             // leftPanel
             // 
-            leftPanel.Controls.Add(SizeLinksLabel);
             leftPanel.Controls.Add(ProductSizeLabel);
-            leftPanel.Controls.Add(SelectAllCheckBox);
-            leftPanel.Controls.Add(SizeLinksListBox);
             leftPanel.Controls.Add(ProductSizeComboBox);
             leftPanel.Dock = DockStyle.Left;
             leftPanel.Location = new Point(0, 100);
             leftPanel.Name = "leftPanel";
             leftPanel.Size = new Size(272, 350);
             leftPanel.TabIndex = 1;
-            // 
-            // SizeLinksLabel
-            // 
-            SizeLinksLabel.AutoSize = true;
-            SizeLinksLabel.Location = new Point(12, 94);
-            SizeLinksLabel.Name = "SizeLinksLabel";
-            SizeLinksLabel.Size = new Size(57, 15);
-            SizeLinksLabel.TabIndex = 5;
-            SizeLinksLabel.Text = "Size Links";
             // 
             // ProductSizeLabel
             // 
@@ -178,25 +143,6 @@
             ProductSizeLabel.Size = new Size(72, 15);
             ProductSizeLabel.TabIndex = 4;
             ProductSizeLabel.Text = "Product Size";
-            // 
-            // SelectAllCheckBox
-            // 
-            SelectAllCheckBox.AutoSize = true;
-            SelectAllCheckBox.Location = new Point(12, 299);
-            SelectAllCheckBox.Name = "SelectAllCheckBox";
-            SelectAllCheckBox.Size = new Size(74, 19);
-            SelectAllCheckBox.TabIndex = 2;
-            SelectAllCheckBox.Text = "Select All";
-            SelectAllCheckBox.UseVisualStyleBackColor = true;
-            SelectAllCheckBox.CheckedChanged += SelectAllCheckBox_CheckedChanged;
-            // 
-            // SizeLinksListBox
-            // 
-            SizeLinksListBox.FormattingEnabled = true;
-            SizeLinksListBox.Location = new Point(12, 112);
-            SizeLinksListBox.Name = "SizeLinksListBox";
-            SizeLinksListBox.Size = new Size(241, 166);
-            SizeLinksListBox.TabIndex = 1;
             // 
             // ProductSizeComboBox
             // 
@@ -217,8 +163,6 @@
             rightPanel.Controls.Add(CostPriceExclLabel);
             rightPanel.Controls.Add(MarkupTextBox);
             rightPanel.Controls.Add(MarkupLabel);
-            rightPanel.Controls.Add(SizeSuffixTextBox);
-            rightPanel.Controls.Add(SizeSuffixLabel);
             rightPanel.Controls.Add(DescriptionTextBox);
             rightPanel.Controls.Add(DescriptionLabel);
             rightPanel.Dock = DockStyle.Fill;
@@ -241,9 +185,9 @@
             SupplierNumberLabel.AutoSize = true;
             SupplierNumberLabel.Location = new Point(22, 240);
             SupplierNumberLabel.Name = "SupplierNumberLabel";
-            SupplierNumberLabel.Size = new Size(50, 15);
+            SupplierNumberLabel.Size = new Size(81, 15);
             SupplierNumberLabel.TabIndex = 10;
-            SupplierNumberLabel.Text = "Supplier";
+            SupplierNumberLabel.Text = "Supplier Code";
             // 
             // SupplierCodeTextBox
             // 
@@ -257,9 +201,9 @@
             SupplierCodeLabel.AutoSize = true;
             SupplierCodeLabel.Location = new Point(22, 193);
             SupplierCodeLabel.Name = "SupplierCodeLabel";
-            SupplierCodeLabel.Size = new Size(81, 15);
+            SupplierCodeLabel.Size = new Size(113, 15);
             SupplierCodeLabel.TabIndex = 8;
-            SupplierCodeLabel.Text = "Supplier Code";
+            SupplierCodeLabel.Text = "Supplier Stock Code";
             // 
             // CostPriceExclTextBox
             // 
@@ -292,23 +236,6 @@
             MarkupLabel.Size = new Size(48, 15);
             MarkupLabel.TabIndex = 4;
             MarkupLabel.Text = "Markup";
-            // 
-            // SizeSuffixTextBox
-            // 
-            SizeSuffixTextBox.Location = new Point(181, 49);
-            SizeSuffixTextBox.Name = "SizeSuffixTextBox";
-            SizeSuffixTextBox.ReadOnly = true;
-            SizeSuffixTextBox.Size = new Size(311, 23);
-            SizeSuffixTextBox.TabIndex = 3;
-            // 
-            // SizeSuffixLabel
-            // 
-            SizeSuffixLabel.AutoSize = true;
-            SizeSuffixLabel.Location = new Point(22, 52);
-            SizeSuffixLabel.Name = "SizeSuffixLabel";
-            SizeSuffixLabel.Size = new Size(59, 15);
-            SizeSuffixLabel.TabIndex = 2;
-            SizeSuffixLabel.Text = "Size Suffix";
             // 
             // DescriptionTextBox
             // 
@@ -354,14 +281,10 @@
         private System.Windows.Forms.Button LoadTemplateButton;
         private System.Windows.Forms.Button ClearTemplateButton;
         private System.Windows.Forms.Button NextAvailableParentCodeButton;
-        private System.Windows.Forms.Button CreateCSVFileButton;
+        private System.Windows.Forms.Button CreateSizesButton;
         private System.Windows.Forms.ComboBox ProductSizeComboBox;
-        private System.Windows.Forms.CheckedListBox SizeLinksListBox;
-        private System.Windows.Forms.CheckBox SelectAllCheckBox;
         private System.Windows.Forms.Label DescriptionLabel;
         private System.Windows.Forms.TextBox DescriptionTextBox;
-        private System.Windows.Forms.Label SizeSuffixLabel;
-        private System.Windows.Forms.TextBox SizeSuffixTextBox;
         private System.Windows.Forms.Label MarkupLabel;
         private System.Windows.Forms.TextBox MarkupTextBox;
         private System.Windows.Forms.Label CostPriceExclLabel;
@@ -371,8 +294,5 @@
         private System.Windows.Forms.Label SupplierNumberLabel;
         private System.Windows.Forms.ComboBox SupplierComboBox;
         private System.Windows.Forms.Label ProductSizeLabel;
-        private System.Windows.Forms.Label SizeLinksLabel;
-        private System.Windows.Forms.Label lblStatus;
-        private System.Windows.Forms.Button btnDetermineSizingMethod;
     }
 }

@@ -36,6 +36,7 @@
             this.btnLogin = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnUserManagement = new System.Windows.Forms.Button();
+            this.lblVersion = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lblTitle
@@ -100,7 +101,7 @@
             this.btnCancel.Click += new System.EventHandler(this.BtnCancel_Click);
             // 
             // btnUserManagement
-            // 
+            //
             this.btnUserManagement.Location = new System.Drawing.Point(50, 240);
             this.btnUserManagement.Name = "btnUserManagement";
             this.btnUserManagement.Size = new System.Drawing.Size(300, 30);
@@ -108,7 +109,18 @@
             this.btnUserManagement.Text = "User Management";
             this.btnUserManagement.UseVisualStyleBackColor = true;
             this.btnUserManagement.Click += new System.EventHandler(this.BtnUserManagement_Click);
-            // 
+            //
+            // lblVersion
+            //
+            this.lblVersion.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblVersion.ForeColor = System.Drawing.SystemColors.GrayText;
+            this.lblVersion.Location = new System.Drawing.Point(20, 340);
+            this.lblVersion.Name = "lblVersion";
+            this.lblVersion.Size = new System.Drawing.Size(360, 20);
+            this.lblVersion.TabIndex = 8;
+            this.lblVersion.Text = "v1.0.0";
+            this.lblVersion.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            //
             // LoginForm
             // 
             this.AcceptButton = this.btnLogin;
@@ -116,6 +128,7 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
             this.ClientSize = new System.Drawing.Size(400, 380);
+            this.Controls.Add(this.lblVersion);
             this.Controls.Add(this.btnUserManagement);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnLogin);
@@ -145,5 +158,6 @@
         private System.Windows.Forms.Button btnLogin;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnUserManagement;
+        private System.Windows.Forms.Label lblVersion;
     }
 }

@@ -24,8 +24,10 @@ namespace Manny_Tools_Claude
         // Form controls for content
         private SQL_Viewer_Schema sqlViewer;
         private CreateSizesForm sizesForm;
+        private KingsleyProductsCreateForm kingsleyProductsForm;
         private StockOnHandForm stockOnHandForm;
         private OrbitSizingMethodForm orbitSizingForm;
+        private StockCountForm stockCountForm;
 
         #endregion
 
@@ -71,11 +73,17 @@ namespace Manny_Tools_Claude
             // Initialize Create Sizes form
             InitializeCreateSizes();
 
+            // Initialize Kingsley Products Create form
+            InitializeKingsleyProducts();
+
             // Initialize Stock On Hand form
             InitializeStockOnHand();
 
             // Initialize Orbit Sizing Method form
             InitializeOrbitSizing();
+
+            // Initialize Stock Count form
+            InitializeStockCount();
 
             // Check connection status
             if (!string.IsNullOrEmpty(_connectionString))
@@ -172,6 +180,17 @@ namespace Manny_Tools_Claude
             tabCreateSizes.Controls.Add(sizesForm);
         }
 
+        private void InitializeKingsleyProducts()
+        {
+            kingsleyProductsForm = new KingsleyProductsCreateForm()
+            {
+                Dock = DockStyle.Fill,
+                Visible = true
+            };
+
+            tabKingsleyProducts.Controls.Add(kingsleyProductsForm);
+        }
+
         private void InitializeStockOnHand()
         {
             // Pass both connection string and current username to StockOnHandForm
@@ -193,6 +212,18 @@ namespace Manny_Tools_Claude
             };
 
             tabOrbitSizing.Controls.Add(orbitSizingForm);
+        }
+
+        private void InitializeStockCount()
+        {
+            // Pass both connection string and current username to StockCountForm
+            stockCountForm = new StockCountForm(_connectionString, _currentUsername)
+            {
+                Dock = DockStyle.Fill,
+                Visible = true
+            };
+
+            tabStockCount.Controls.Add(stockCountForm);
         }
 
         // Dynamic positioning of buttons based on form size
@@ -248,6 +279,16 @@ namespace Manny_Tools_Claude
                 tabControl.TabPages.Remove(tabOrbitSizing);
             }
 
+            if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.STOCK_COUNT_TAB))
+            {
+                tabControl.TabPages.Remove(tabStockCount);
+            }
+
+            if (!_permissionManager.HasPermission(_currentUsername, UserPermissions.CREATE_KINGSLEY_PRODUCT_TAB))
+            {
+                tabControl.TabPages.Remove(tabKingsleyProducts);
+            }
+
             // For standard users, hide settings button
             if (_currentUserType == UserType.StandardUser)
             {
@@ -280,25 +321,11 @@ namespace Manny_Tools_Claude
         {
             try
             {
-                string appDataPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "MannyTools");
-
-                string configPath = Path.Combine(appDataPath, "connection.cfg");
-
-                if (File.Exists(configPath))
+                // Use DatabaseConnectionManager to ensure consistency
+                if (DatabaseConnectionManager.Instance.LoadConnectionString())
                 {
-                    // Read connection string
-                    _connectionString = File.ReadAllText(configPath);
-
-                    if (string.IsNullOrEmpty(_connectionString))
-                    {
-                        ConnectionStatusManager.Instance.CheckConnection(string.Empty);
-                        ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
-                        return false;
-                    }
-
-                    ConnectionStatusManager.Instance.CheckConnection(_connectionString);
+                    _connectionString = DatabaseConnectionManager.Instance.ConnectionString;
+                    ConnectionStatusManager.Instance.ApplyButtonStyling(btnSettings);
                     return true;
                 }
             }
@@ -335,10 +362,28 @@ namespace Manny_Tools_Claude
                 sqlViewer.UpdateConnectionString(_connectionString);
             }
 
+            // Update Create Sizes form with new connection string
+            if (sizesForm != null)
+            {
+                sizesForm.UpdateConnectionString(_connectionString);
+            }
+
+            // Update Kingsley Products form with new connection string
+            if (kingsleyProductsForm != null)
+            {
+                kingsleyProductsForm.UpdateConnectionString(_connectionString);
+            }
+
             // Update Stock On Hand form with new connection string
             if (stockOnHandForm != null)
             {
                 stockOnHandForm.UpdateConnectionString(_connectionString);
+            }
+
+            // Update Stock Count form with new connection string
+            if (stockCountForm != null)
+            {
+                stockCountForm.UpdateConnectionString(_connectionString);
             }
         }
 

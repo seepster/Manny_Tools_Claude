@@ -1,0 +1,58 @@
+Answers to your questions:
+
+1. ParentCode = ProductCode for this page.
+
+2. This page should include the supplier functionality.
+
+3. Selling Prices are auto populated when our user loads a template (but still editable by user, OR entered by the user manually if creating a new Product from scratch.
+
+4. Our user will want to create individual products, as our user creates products, we can show the product summary at the bottom of the page(  a list containing the products from this session), once our user is done adding products to the list, they can press the Review button to view a full page of the list, then proceed to Create the products in our database. We should clearly indicate which products are going to override existing data.
+To create multiple variants of the same product , our user can use the Load Template button.
+
+5. No fields should be excluded when loading template information, except the ProductCode. (and ParentCode, by implication, since they are identical in this use case).
+
+6. Let's stick to the CSV requirements, and only warn our user when extreme values are entered, by highlighting the field with a red border and some text.
+
+7.  Check for conflicts and inform user as discussed.
+
+8. We should create a new DTO for this implementation, the following fields will contain the following default values:
+SellingPriceExcl = calculated by system and populated, no user input for this field (Formula is SellingPriceIncl - TaxValue, ie. tax deduction percentage)
+TaxType = NULL
+IsComponent = 0
+CombinedProduct = 0
+HasContainer = 0
+ContainerID = 0
+ContainerInfluencesCost = 0
+PositiveStockItem = 0
+DateCreated = (we get this using system datetime function, if user loads template, we also update this field in runtime with current)
+DateUpdate = (we get this using system datetime function)
+FixedMarkup = 0
+SalesLocation = NULL
+Batch = 0
+StockLocation = NULL
+SerialNumberControlled = 0
+DirectPriceChange = 0
+MenuCategory = NULL
+OptimisticLockField = NULL
+GCRecord = NULL
+ObjectType = 65
+SystemProduct = 0
+Sprice = 0
+ProductPriceExtra = 0
+ProductIsExtra = 0
+AvgCost = 0
+AvgPurchasePrice = 0
+LastPurchaseDate = system function used here if new product
+ProductID = 0
+DiscontinuedReason = 0
+SeasonalItem = 0
+OnceOffItem = 0
+Dormant = 0
+IsPack = 0
+
+
+
+
+
+
+

@@ -1,0 +1,33 @@
+
+=== ProductCreationHelper.CreateOrUpdateProduct START ===
+ProductCode: 10001065
+Description: CROCS GENNA GIRLS S/ON BLK/BLK
+
+--- Phase 1: Validation ---
+Validation Result: IsSuccess=True, IsNew=True
+Product Exists: False
+
+--- Phase 2: INSERT ProductInfo ---
+Converting to Orbit_ProductInfo...
+DateCreated: 2025-10-30 12:35:18.056
+DateUpdate: 2025-10-30 12:35:18.056
+ParentCode: 10001065
+CostPriceExcl: 131.600006
+SellingPriceIncl: 399.99
+Executing INSERT query...
+Exception thrown: 'Microsoft.Data.SqlClient.SqlException' in Microsoft.Data.SqlClient.dll
+Phase 2 SQL EXCEPTION:
+  Message: Invalid column name 'OnceOffiItem'.
+  SQL Error Number: 207
+  Line Number: 4
+  Procedure: 
+  Server: 10.0.0.190
+Exception thrown: 'System.Exception' in Manny_Tools_Claude.dll
+
+=== ProductCreationHelper.CreateOrUpdateProduct FAILED ===
+EXCEPTION: Phase 2 (INSERT ProductInfo) failed: Invalid column name 'OnceOffiItem'.
+Manny_Tools_Claude.dll (2004): Loaded 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\8.0.21\System.Reflection.Metadata.dll'. Skipped loading symbols. Module is optimized and the debugger option 'Just My Code' is enabled.
+Manny_Tools_Claude.dll (2004): Loaded 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\8.0.21\System.Collections.Immutable.dll'. Skipped loading symbols. Module is optimized and the debugger option 'Just My Code' is enabled.
+Manny_Tools_Claude.dll (2004): Loaded 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\8.0.21\System.IO.MemoryMappedFiles.dll'. Skipped loading symbols. Module is optimized and the debugger option 'Just My Code' is enabled.
+Stack Trace:    at Manny_Tools_Claude.ProductCreationHelper.CreateOrUpdateProduct(KingsleyProductItem product) in C:\Users\CP\Desktop\CsharpProjects\BigSolutionForAllMyProjects\Manny_Tools_Claude\ProductCreationHelper.cs:line 87
+Inner Exception: Invalid column name 'OnceOffiItem'.

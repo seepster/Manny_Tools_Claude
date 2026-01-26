@@ -1,0 +1,22 @@
+I want us to create a new tab called "Kingsley_Products_Create".
+
+On this tab we want to allow the user to:
+- Create new products
+- Which can then be sent to the database using our existing query infrastructure from the "Create Sizes" tab
+
+The page layout should consist of:
+1 Header Section, where our user can do the following:
+1.1 Load a template by entering an existing ProductCode.
+1.2 Enter a new ProductCode.
+1.3 Request the next available ProductCode
+
+2. Body section containing all the fields our user will enter for the new product.
+2.1 Should it already exist, we will indicate to the user that this action will override an existing product.
+2.2 We should do field validation on all the required fields, to warn our user of incorrectly entered information, before enabling the "Review Products" button.
+2.3 After our user is provided a Review page, which summarizes all the products they wish to create, our user can confirm creating these products.
+2.4 We will then report to the user the result of this database interaction for each product.
+
+Read carefully from the existing "Create Sizes" tab/page, as many of the requirements for creating a new product can be found there.
+
+Here is a list of database fields that are going to be used. Fields with a edit sign in front of them, are editable by the user, fields with a checkmark, are required by the database. I will provide these values or methods of obtaining these values in due time, for now let's put placeholders in.
+
